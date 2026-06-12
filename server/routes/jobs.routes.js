@@ -10,7 +10,7 @@ const router = Router();
 router.get("/", async (req, res) => {
   try {
     const { keyword, location, timeRange } = req.query;
-    const limit = Math.min(Number(req.query.limit) || 50, 100);
+    const limit = Math.min(Number(req.query.limit) || 100, 500);
 
     const query = {};
     if (keyword) query.keyword = String(keyword).trim().toLowerCase();

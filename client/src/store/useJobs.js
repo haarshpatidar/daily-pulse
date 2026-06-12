@@ -34,6 +34,7 @@ export const useJobs = create((set, get) => ({
       const params = new URLSearchParams({
         keyword: jobKeywords,
         timeRange: get().timeRange,
+        limit: "500",
       });
       if (jobLocation) params.set("location", jobLocation);
       const data = await getJSON(`/api/jobs?${params}`);
@@ -62,10 +63,11 @@ export const useJobs = create((set, get) => ({
     set({ scraping: true });
     if (pollTimer) clearInterval(pollTimer);
     let tries = 0;
+    // a full paginated scrape can take ~1.5 min, so poll for up to ~3 min
     pollTimer = setInterval(async () => {
       tries += 1;
       await get().fetch({ background: true });
-      if (get().jobs.length > 0 || tries >= 12) {
+      if (get().jobs.length > 0 || tries >= 22) {
         clearInterval(pollTimer);
         pollTimer = null;
         set({ scraping: false });

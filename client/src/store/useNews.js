@@ -34,7 +34,7 @@ export const useNews = create((set, get) => ({
     if (!background) set({ loading: true, error: null });
 
     try {
-      const params = new URLSearchParams({ timeRange });
+      const params = new URLSearchParams({ timeRange, limit: "120" });
       if (cat) params.set("category", cat);
       const data = await getJSON(`/api/news?${params}`);
       set({ articles: data.articles, loading: false, error: null });

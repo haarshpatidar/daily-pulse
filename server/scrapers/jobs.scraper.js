@@ -16,20 +16,30 @@ const LAUNCH_OPTIONS = {
   ],
 };
 
+// LinkedIn's logged-out "see more jobs" endpoint returns a chunk of job cards
+// at a given offset. Walking it with start += (cards returned) collects every
+// public listing, not just the first page.
+const GUEST_SEARCH_API =
+  "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search";
+
+const PAGE_DELAY_MS = 1300; // politeness gap between pagination requests
+const MAX_JOBS = 600; // safety ceiling per search
+const MAX_PAGES = 80; // hard stop in case the offset never empties
+const STALE_LIMIT = 3; // stop after N pages that add nothing new
+
 // Only one Puppeteer run at a time — cron and the on-demand trigger share this.
 let busy = false;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-function buildSearchUrl(keywords, location) {
+function buildGuestUrl(keywords, location, start) {
   const params = new URLSearchParams({
     keywords,
-    location,
-    f_TPR: "r604800", // posted within the last week, matching the app's widest time filter
-    position: "1",
-    pageNum: "0",
+    location: location || "",
+    f_TPR: "r604800", // posted within the last week — widest filter the app offers
+    start: String(start),
   });
-  return `https://www.linkedin.com/jobs/search?${params.toString()}`;
+  return `${GUEST_SEARCH_API}?${params.toString()}`;
 }
 
 function parsePostedDate(iso, text) {
@@ -59,56 +69,81 @@ async function preparePage(browser) {
   return page;
 }
 
-// Scrape one search from LinkedIn's public (logged-out) jobs page.
-// Returns normalized job objects; throws on auth wall / bot challenge.
+// Scrape every public listing for one search by paginating LinkedIn's guest
+// endpoint. Returns normalized, de-duplicated job objects.
+// Throws only if the very first page is blocked (auth wall / throttle); a block
+// part-way through keeps whatever was already collected.
 export async function extractJobs(page, keywords, location) {
-  await page.goto(buildSearchUrl(keywords, location), {
-    waitUntil: "domcontentloaded",
-    timeout: 45000,
-  });
+  const byUrl = new Map();
+  let start = 0;
+  let empties = 0;
+  let stale = 0;
+  let pages = 0;
 
-  if (/authwall|\/login|\/checkpoint/.test(page.url())) {
-    throw new Error("LinkedIn served an auth wall");
-  }
+  while (start < MAX_JOBS && pages < MAX_PAGES && empties < 2 && stale < STALE_LIMIT) {
+    const resp = await page.goto(buildGuestUrl(keywords, location, start), {
+      waitUntil: "domcontentloaded",
+      timeout: 40000,
+    });
+    pages += 1;
 
-  try {
-    await page.waitForSelector("ul.jobs-search__results-list li", { timeout: 15000 });
-  } catch {
-    const noResults = await page.$(".core-section-container__main-title, .no-results");
-    if (noResults) return [];
-    throw new Error("job results never rendered (possible bot challenge)");
-  }
+    const status = resp ? resp.status() : 0;
+    if (status === 429 || status === 403) {
+      if (byUrl.size === 0) throw new Error(`LinkedIn returned HTTP ${status}`);
+      console.warn(`[jobs] throttled (HTTP ${status}) after ${byUrl.size} jobs — stopping early`);
+      break;
+    }
+    if (/authwall|\/login|\/checkpoint/.test(page.url())) {
+      if (byUrl.size === 0) throw new Error("LinkedIn served an auth wall");
+      break;
+    }
 
-  // nudge lazy-loaded cards into the DOM
-  await page.evaluate(() => window.scrollBy(0, 1500));
-  await sleep(1500);
+    const raw = await page.$$eval("li", (cards) =>
+      cards.map((card) => {
+        const text = (sel) => card.querySelector(sel)?.textContent?.trim() || "";
+        const timeEl = card.querySelector("time");
+        const link =
+          card.querySelector("a.base-card__full-link") || card.querySelector("a");
+        return {
+          title: text("h3.base-search-card__title"),
+          company: text("h4.base-search-card__subtitle"),
+          location: text("span.job-search-card__location"),
+          postedText: timeEl?.textContent?.trim() || "",
+          postedISO: timeEl?.getAttribute("datetime") || "",
+          url: link?.href || "",
+        };
+      })
+    );
 
-  const raw = await page.$$eval("ul.jobs-search__results-list > li", (cards) =>
-    cards.map((card) => {
-      const text = (sel) => card.querySelector(sel)?.textContent?.trim() || "";
-      const timeEl = card.querySelector("time");
-      return {
-        title: text("h3.base-search-card__title"),
-        company: text("h4.base-search-card__subtitle"),
-        location: text("span.job-search-card__location"),
-        postedText: timeEl?.textContent?.trim() || "",
-        postedISO: timeEl?.getAttribute("datetime") || "",
-        url: card.querySelector("a.base-card__full-link")?.href || "",
-      };
-    })
-  );
+    const valid = raw.filter((j) => j.title && j.url);
+    if (valid.length === 0) {
+      empties += 1;
+      start += 10; // nudge past a possible gap before giving up
+      continue;
+    }
+    empties = 0;
 
-  return raw
-    .filter((j) => j.title && j.url)
-    .map((j) => ({
-      title: j.title,
-      company: j.company || "Unknown",
-      location: j.location,
+    const before = byUrl.size;
+    for (const j of valid) {
       // strip tracking params so the same posting always dedupes to one URL
-      url: j.url.split("?")[0],
-      postedAt: parsePostedDate(j.postedISO, j.postedText),
-      postedText: j.postedText,
-    }));
+      const url = j.url.split("?")[0];
+      if (byUrl.has(url)) continue;
+      byUrl.set(url, {
+        title: j.title,
+        company: j.company || "Unknown",
+        location: j.location,
+        url,
+        postedAt: parsePostedDate(j.postedISO, j.postedText),
+        postedText: j.postedText,
+      });
+    }
+
+    stale = byUrl.size === before ? stale + 1 : 0;
+    start += valid.length;
+    await sleep(PAGE_DELAY_MS);
+  }
+
+  return [...byUrl.values()];
 }
 
 async function upsertJobs(jobs, keywords, location) {
