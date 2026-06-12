@@ -1,0 +1,82 @@
+import { useNews } from "../store/useNews.js";
+import { usePrefs, CATEGORIES } from "../store/usePrefs.js";
+import { useUi } from "../store/useUi.js";
+import { TIME_RANGES } from "../lib/time.js";
+import FilterPills from "./FilterPills.jsx";
+import NewsCard from "./NewsCard.jsx";
+import EmptyState from "./EmptyState.jsx";
+import { SkeletonNewsCard } from "./Skeleton.jsx";
+
+export default function NewsFeed({ limit, compact = false }) {
+  const { articles, loading, error, category, timeRange, setCategory, setTimeRange, clearFilters, fetch } =
+    useNews();
+  const prefCategories = usePrefs((s) => s.categories);
+  const setView = useUi((s) => s.setView);
+
+  const categoryOptions = [
+    { id: "all", label: "All" },
+    ...CATEGORIES.filter((c) => prefCategories.includes(c.id)),
+  ];
+
+  const shown = limit ? articles.slice(0, limit) : articles;
+
+  return (
+    <section className="mt-8 first:mt-0" aria-label="News">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="section-title">{compact ? "Latest news" : "News"}</h2>
+        {compact && (
+          <button
+            className="text-[13px] text-accent hover:underline"
+            onClick={() => setView("news")}
+          >
+            View all
+          </button>
+        )}
+      </div>
+
+      {!compact && (
+        <div className="flex flex-wrap items-center gap-4 mb-6">
+          <FilterPills
+            label="Category"
+            options={categoryOptions}
+            value={category}
+            onChange={setCategory}
+          />
+          <span className="hidden sm:block w-px h-6 bg-line" aria-hidden="true" />
+          <FilterPills
+            label="Time range"
+            options={TIME_RANGES}
+            value={timeRange}
+            onChange={setTimeRange}
+          />
+        </div>
+      )}
+
+      {loading ? (
+        <div className="news-grid">
+          {Array.from({ length: compact ? 4 : 6 }, (_, i) => (
+            <SkeletonNewsCard key={i} />
+          ))}
+        </div>
+      ) : error ? (
+        <EmptyState
+          message="Couldn't load news — is the server running?"
+          actionLabel="Retry"
+          onAction={() => fetch()}
+        />
+      ) : shown.length === 0 ? (
+        <EmptyState
+          message="No articles match these filters."
+          actionLabel="Clear filters"
+          onAction={clearFilters}
+        />
+      ) : (
+        <div className="news-grid">
+          {shown.map((article, i) => (
+            <NewsCard key={article.url} article={article} index={i} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
