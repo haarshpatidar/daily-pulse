@@ -370,6 +370,120 @@ a {
 }
 
 /* ------------------------------------------------------------------ */
+/* Company leads                                                       */
+/* ------------------------------------------------------------------ */
+
+.lead-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-input {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 13px;
+  transition: border-color 150ms ease;
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.filter-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.email-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 6px 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  font-size: 13px;
+}
+
+.email-chip a {
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.email-chip.hr {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.email-chip.hr a {
+  color: var(--accent);
+}
+
+.email-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  color: var(--text-secondary);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.email-copy:hover {
+  background: var(--hover);
+  color: var(--text-primary);
+}
+
+.hiring-badge {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.lead-meta {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.lead-meta:empty {
+  display: none;
+}
+
+.export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.export-btn:hover {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+/* ------------------------------------------------------------------ */
 /* Pagination                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -499,7 +613,7 @@ a {
   left: 0;
   right: 0;
   z-index: 40;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   height: 64px;
   background: var(--bg-card);
   border-top: 1px solid var(--border);

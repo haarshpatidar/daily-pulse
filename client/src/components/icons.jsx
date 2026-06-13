@@ -72,3 +72,31 @@ export const MapPinIcon = (props) => (
     <circle cx="12" cy="10" r="3" />
   </svg>
 );
+
+export const MailIcon = (props) => (
+  <svg {...base} {...props}>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <path d="m3 7 9 6 9-6" />
+  </svg>
+);
+
+export const CopyIcon = (props) => (
+  <svg {...base} width={14} height={14} {...props}>
+    <rect x="9" y="9" width="11" height="11" rx="2" />
+    <path d="M5 15V5a2 2 0 0 1 2-2h8" />
+  </svg>
+);
+
+export const CheckIcon = (props) => (
+  <svg {...base} width={14} height={14} {...props}>
+    <path d="M20 6 9 17l-5-5" />
+  </svg>
+);
+
+export const DownloadIcon = (props) => (
+  <svg {...base} width={16} height={16} {...props}>
+    <path d="M12 3v12" />
+    <path d="m7 11 5 5 5-5" />
+    <path d="M5 21h14" />
+  </svg>
+);

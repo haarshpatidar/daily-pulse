@@ -25,6 +25,22 @@ export function SkeletonJobCard() {
   );
 }
 
+export function SkeletonCompanyCard() {
+  return (
+    <div className="card" aria-hidden="true">
+      <div className="flex items-center justify-between mb-3">
+        <div className="skeleton h-4 w-1/3" />
+        <div className="skeleton h-5 w-16 rounded-full" />
+      </div>
+      <div className="skeleton h-3 w-1/2 mb-4" />
+      <div className="flex gap-2">
+        <div className="skeleton h-7 w-40 rounded-full" />
+        <div className="skeleton h-7 w-32 rounded-full" />
+      </div>
+    </div>
+  );
+}
+
 export function SkeletonWeather() {
   return (
     <div className="card weather-card" aria-hidden="true">

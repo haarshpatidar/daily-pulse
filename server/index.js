@@ -7,6 +7,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 import newsRoutes from "./routes/news.routes.js";
 import jobsRoutes from "./routes/jobs.routes.js";
+import companiesRoutes from "./routes/companies.routes.js";
 import weatherRoutes from "./routes/weather.routes.js";
 import { startScheduler } from "./cron/scheduler.js";
 
@@ -30,6 +31,7 @@ app.get("/api/health", (req, res) => {
 
 app.use("/api/news", newsRoutes);
 app.use("/api/jobs", jobsRoutes);
+app.use("/api/companies", companiesRoutes);
 app.use("/api/weather", weatherRoutes);
 
 // If the client has been built, serve it from the same process so a single

@@ -1,10 +1,11 @@
 import { useUi } from "../store/useUi.js";
-import { HomeIcon, NewsIcon, BriefcaseIcon } from "./icons.jsx";
+import { HomeIcon, NewsIcon, BriefcaseIcon, MailIcon } from "./icons.jsx";
 
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", Icon: HomeIcon },
   { id: "news", label: "News", Icon: NewsIcon },
   { id: "jobs", label: "Jobs", Icon: BriefcaseIcon },
+  { id: "leads", label: "Leads", Icon: MailIcon },
 ];
 
 export default function Sidebar() {

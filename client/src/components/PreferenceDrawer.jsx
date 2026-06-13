@@ -3,6 +3,7 @@ import { usePrefs, CATEGORIES } from "../store/usePrefs.js";
 import { useUi } from "../store/useUi.js";
 import { useNews } from "../store/useNews.js";
 import { useJobs } from "../store/useJobs.js";
+import { useCompanies } from "../store/useCompanies.js";
 import { CloseIcon } from "./icons.jsx";
 
 export default function PreferenceDrawer() {
@@ -12,6 +13,8 @@ export default function PreferenceDrawer() {
   const [selected, setSelected] = useState([]);
   const [keywords, setKeywords] = useState("");
   const [location, setLocation] = useState("");
+  const [leadCompanies, setLeadCompanies] = useState("");
+  const [leadFromJobs, setLeadFromJobs] = useState(true);
 
   // re-seed local form state from saved prefs every time the drawer opens
   useEffect(() => {
@@ -20,6 +23,8 @@ export default function PreferenceDrawer() {
       setSelected(prefs.categories);
       setKeywords(prefs.jobKeywords);
       setLocation(prefs.jobLocation);
+      setLeadCompanies(prefs.leadCompanies);
+      setLeadFromJobs(prefs.leadFromJobs);
     }
   }, [open]);
 
@@ -37,15 +42,21 @@ export default function PreferenceDrawer() {
   const canSave = selected.length > 0;
 
   const save = () => {
-    const prevKeywords = usePrefs.getState().jobKeywords;
-    const prevLocation = usePrefs.getState().jobLocation;
+    const prefs = usePrefs.getState();
+    const prevKeywords = prefs.jobKeywords;
+    const prevLocation = prefs.jobLocation;
+    const prevLeadCompanies = prefs.leadCompanies;
+    const prevLeadFromJobs = prefs.leadFromJobs;
     const nextKeywords = keywords.trim();
     const nextLocation = location.trim();
+    const nextLeadCompanies = leadCompanies.trim();
 
     usePrefs.getState().savePreferences({
       categories: selected,
       jobKeywords: nextKeywords,
       jobLocation: nextLocation,
+      leadCompanies: nextLeadCompanies,
+      leadFromJobs,
     });
 
     useNews.getState().fetch();
@@ -53,6 +64,15 @@ export default function PreferenceDrawer() {
       useJobs.getState().syncPreferences();
     }
     useJobs.getState().fetch();
+
+    // re-run lead enrichment only when the lead search actually changed and
+    // there's something to scan
+    const leadChanged =
+      nextLeadCompanies !== prevLeadCompanies || leadFromJobs !== prevLeadFromJobs;
+    if (leadChanged && (nextLeadCompanies || leadFromJobs)) {
+      useCompanies.getState().syncPreferences();
+    }
+    useCompanies.getState().fetch();
     closeDrawer();
   };
 
@@ -127,6 +147,34 @@ export default function PreferenceDrawer() {
             </div>
             <p className="text-[13px] text-muted mt-4">
               Listings refresh from LinkedIn every 3 hours.
+            </p>
+          </section>
+
+          <section className="mt-8">
+            <span className="source-label mb-4">Company leads</span>
+            <div className="flex flex-col gap-4 mt-4">
+              <label className="block">
+                <span className="text-[13px] text-muted">Company names (one per line)</span>
+                <textarea
+                  className="drawer-input mt-1 resize-none"
+                  rows={4}
+                  value={leadCompanies}
+                  onChange={(e) => setLeadCompanies(e.target.value)}
+                  placeholder={"Acme Corp\nGlobex\nStark Industries"}
+                />
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={leadFromJobs}
+                  onChange={(e) => setLeadFromJobs(e.target.checked)}
+                />
+                <span className="text-[13px]">Also scan companies from my job results</span>
+              </label>
+            </div>
+            <p className="text-[13px] text-muted mt-4">
+              We collect only publicly published role emails (hr@, careers@, info@…) and visible
+              company details from each company's own website. Refreshes every 6 hours.
             </p>
           </section>
         </div>
