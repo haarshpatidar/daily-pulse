@@ -9,6 +9,7 @@ import newsRoutes from "./routes/news.routes.js";
 import jobsRoutes from "./routes/jobs.routes.js";
 import companiesRoutes from "./routes/companies.routes.js";
 import weatherRoutes from "./routes/weather.routes.js";
+import applyRoutes from "./routes/apply.routes.js";
 import { startScheduler } from "./cron/scheduler.js";
 
 const PORT = process.env.PORT || 5000;
@@ -33,6 +34,15 @@ app.use("/api/news", newsRoutes);
 app.use("/api/jobs", jobsRoutes);
 app.use("/api/companies", companiesRoutes);
 app.use("/api/weather", weatherRoutes);
+app.use("/api/apply", applyRoutes);
+
+// Serve auto-fill screenshots (apply review previews). Only the screenshots
+// subdir is public; resume bytes are served through the authenticated-ish
+// /api/apply/resume route instead of by guessable filename.
+app.use(
+  "/uploads/screenshots",
+  express.static(path.join(__dirname, "uploads", "screenshots"))
+);
 
 // If the client has been built, serve it from the same process so a single
 // free-tier service can host the whole app.

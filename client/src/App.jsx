@@ -6,12 +6,14 @@ import WeatherWidget from "./components/WeatherWidget.jsx";
 import NewsFeed from "./components/NewsFeed.jsx";
 import JobsFeed from "./components/JobsFeed.jsx";
 import CompaniesFeed from "./components/CompaniesFeed.jsx";
+import ApplyView from "./components/ApplyView.jsx";
 import PreferenceDrawer from "./components/PreferenceDrawer.jsx";
 import { usePrefs } from "./store/usePrefs.js";
 import { useUi } from "./store/useUi.js";
 import { useNews } from "./store/useNews.js";
 import { useJobs } from "./store/useJobs.js";
 import { useCompanies } from "./store/useCompanies.js";
+import { useApply } from "./store/useApply.js";
 import { useWeather } from "./store/useWeather.js";
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
@@ -31,6 +33,7 @@ export default function App() {
     useNews.getState().fetch();
     useJobs.getState().init();
     useCompanies.getState().init();
+    useApply.getState().init();
 
     const id = setInterval(() => {
       useNews.getState().fetch({ background: true });
@@ -64,6 +67,7 @@ export default function App() {
           {view === "news" && <NewsFeed />}
           {view === "jobs" && <JobsFeed />}
           {view === "leads" && <CompaniesFeed />}
+          {view === "apply" && <ApplyView />}
         </main>
       </div>
 

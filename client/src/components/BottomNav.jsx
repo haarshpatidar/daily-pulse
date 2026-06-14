@@ -1,11 +1,12 @@
 import { useUi } from "../store/useUi.js";
-import { HomeIcon, NewsIcon, BriefcaseIcon, MailIcon } from "./icons.jsx";
+import { HomeIcon, NewsIcon, BriefcaseIcon, MailIcon, SendIcon } from "./icons.jsx";
 
 const TABS = [
   { id: "dashboard", label: "Home", Icon: HomeIcon },
   { id: "news", label: "News", Icon: NewsIcon },
   { id: "jobs", label: "Jobs", Icon: BriefcaseIcon },
   { id: "leads", label: "Leads", Icon: MailIcon },
+  { id: "apply", label: "Apply", Icon: SendIcon },
 ];
 
 export default function BottomNav() {

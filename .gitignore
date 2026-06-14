@@ -3,3 +3,7 @@ dist/
 .env
 .DS_Store
 *.log
+
+# assisted-apply: uploaded resumes/screenshots and per-platform browser sessions
+server/uploads/
+server/.apply-sessions/

@@ -18,6 +18,9 @@
   --skeleton-a: #f0f0f0;
   --skeleton-b: #e0e0e0;
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --ok: #16a34a;
+  --warn: #b45309;
+  --error: #dc2626;
 }
 
 [data-theme="dark"] {
@@ -34,6 +37,9 @@
   --skeleton-a: #1e1e1e;
   --skeleton-b: #2a2a2a;
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --error: #f87171;
 }
 
 /* Bridge tokens into Tailwind utilities (bg-card, text-ink, border-line…) */
@@ -44,6 +50,9 @@
   --color-muted: var(--text-secondary);
   --color-line: var(--border);
   --color-accent: var(--accent);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-error: var(--error);
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
 }
 
@@ -613,7 +622,7 @@ a {
   left: 0;
   right: 0;
   z-index: 40;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   height: 64px;
   background: var(--bg-card);
   border-top: 1px solid var(--border);
@@ -669,10 +678,109 @@ a {
 }
 
 /* ------------------------------------------------------------------ */
+/* Assisted apply                                                      */
+/* ------------------------------------------------------------------ */
+
+.apply-disclaimer {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+/* secondary/ghost button — pairs with the solid .apply-btn */
+.apply-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.apply-btn-ghost:hover {
+  border-color: var(--border-hover);
+  background: var(--hover);
+}
+
+.apply-btn-ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.save-btn-sm {
+  width: auto;
+  height: 32px;
+  padding: 0 16px;
+  font-size: 13px;
+}
+
+.platform-badge {
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: capitalize;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.status-badge {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-queued { background: var(--hover); color: var(--text-secondary); }
+.status-preparing { background: var(--accent-soft); color: var(--accent); }
+.status-ready { background: var(--accent-soft); color: var(--accent); }
+.status-done { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.status-warn { background: color-mix(in srgb, var(--warn) 20%, transparent); color: var(--warn); }
+.status-error { background: color-mix(in srgb, var(--error) 18%, transparent); color: var(--error); }
+.status-muted { background: var(--hover); color: var(--text-secondary); }
+
+.apply-shot {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  object-position: top;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.apply-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.apply-column-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+/* ------------------------------------------------------------------ */
 /* Responsive                                                          */
 /* ------------------------------------------------------------------ */
 
 @media (max-width: 1024px) {
+  .apply-board {
+    grid-template-columns: 1fr;
+  }
+
   /* tablet: sidebar stays icon-only; hover-expand still works */
   .content {
     padding: 24px 24px 64px;
