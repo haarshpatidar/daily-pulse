@@ -53,7 +53,9 @@ export default function ApplicationCard({ application: a, index }) {
 
       {a.status === "needs_login" && (
         <p className="text-[13px] text-muted mt-3">
-          Not signed in to {a.platform}. Log in from the platform list above, then prepare again.
+          {busy
+            ? `Sign in to ${a.platform} in the browser window that just opened — it'll continue automatically once you're in.`
+            : `Not signed in to ${a.platform}. Click Prepare and sign in right in the window that opens.`}
         </p>
       )}
 

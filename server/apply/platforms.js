@@ -15,6 +15,8 @@ export const PLATFORM_CONFIG = {
     tuned: true,
     hostnames: ["linkedin.com"],
     loginUrl: "https://www.linkedin.com/login",
+    // the session cookie LinkedIn sets on sign-in — the reliable logged-in signal
+    authCookie: "li_at",
     // present only on a login/auth wall
     loginWallSelector: "input#username, form.login__form, .authwall-join-form, .join-form",
     // present only once authenticated (the top-nav "Me" avatar)

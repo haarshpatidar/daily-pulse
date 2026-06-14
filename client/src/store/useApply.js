@@ -144,7 +144,10 @@ export const useApply = create((set, get) => ({
     }
   },
 
-  // poll the tracker every few seconds while a prepare is in flight, then stop
+  // poll the tracker every few seconds while a prepare is in flight, then stop.
+  // The cap is just a runaway guard — polling halts the instant nothing is busy.
+  // It must outlast a prepare that's parked waiting for the user to sign in in
+  // the live window (LOGIN_WAIT_MS, ~3 min) plus the autofill that follows.
   startPolling: () => {
     if (pollTimer) return;
     let ticks = 0;
@@ -152,7 +155,7 @@ export const useApply = create((set, get) => ({
       ticks += 1;
       await get().loadApplications({ background: true });
       const stillBusy = get().busy || get().applications.some((a) => ACTIVE.has(a.status));
-      if (!stillBusy || ticks >= 40) {
+      if (!stillBusy || ticks >= 100) {
         clearInterval(pollTimer);
         pollTimer = null;
       }

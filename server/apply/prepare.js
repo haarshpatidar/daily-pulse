@@ -4,12 +4,16 @@ import { fileURLToPath } from "node:url";
 import Application from "../models/Application.js";
 import ApplyProfile from "../models/ApplyProfile.js";
 import { detectPlatform, getPlatformConfig } from "./platforms.js";
-import { getBrowser, getPage, isLoggedIn, withLock, sleep } from "./session.js";
+import { getBrowser, getPage, isLoggedIn, waitForLogin, withLock, sleep } from "./session.js";
 import { autofill, buildProfileValues } from "./autofill.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = path.resolve(__dirname, "../uploads");
 const SHOTS_DIR = path.join(UPLOADS_DIR, "screenshots");
+
+// How long to hold the apply window open waiting for the user to sign in inside
+// it before giving up. Generous — a human may need to handle a 2FA prompt.
+const LOGIN_WAIT_MS = Number(process.env.APPLY_LOGIN_TIMEOUT_MS) || 180000;
 
 // Load the singleton profile and resolve the resume's absolute path (if the file
 // still exists on disk). Returns null if no profile has been saved yet.
@@ -100,8 +104,38 @@ export async function prepareApplication(appId) {
       await sleep(1800);
 
       if (!(await isLoggedIn(page, config))) {
-        await Application.updateOne({ _id: appId }, { $set: { status: "needs_login" } });
-        return { status: "needs_login" };
+        // Sign in inside THIS window, then continue automatically — no separate
+        // login step. Park on the platform's login page (the apply page itself if
+        // we don't know one) and wait for the user to authenticate right here.
+        await Application.updateOne({ _id: appId }, { $set: { status: "needs_login", error: "" } });
+        const loginTarget = config.loginUrl || app.applyUrl;
+        await page
+          .goto(loginTarget, { waitUntil: "domcontentloaded", timeout: 45000 })
+          .catch(() => {});
+        try {
+          await page.bringToFront();
+        } catch {
+          /* headless */
+        }
+
+        const signedIn = await waitForLogin(page, config, { timeoutMs: LOGIN_WAIT_MS });
+        if (!signedIn) {
+          await Application.updateOne(
+            { _id: appId },
+            {
+              $set: {
+                status: "needs_login",
+                error: "Timed out waiting for sign-in — click Prepare to try again",
+              },
+            }
+          );
+          return { status: "needs_login" };
+        }
+
+        // Authenticated now — head back to the apply page and carry on.
+        await Application.updateOne({ _id: appId }, { $set: { status: "preparing" } });
+        await page.goto(app.applyUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
+        await sleep(1800);
       }
 
       await openApplyForm(page, config);

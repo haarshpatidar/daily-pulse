@@ -213,10 +213,11 @@ export default function ApplyView() {
 
       {/* ---- Platform logins ---- */}
       <div className="card mt-6">
-        <span className="source-label mb-1">Sign in to each platform (once)</span>
+        <span className="source-label mb-1">Sign in to each platform (optional)</span>
         <p className="text-[13px] text-muted mt-1">
-          Opens a real browser window — log in there and the session is remembered. LinkedIn is
-          tuned for Easy Apply; others are best-effort generic fills.
+          Opens a real browser window — log in there and the session is remembered. You can also
+          just hit Prepare and sign in right in the apply window when prompted. LinkedIn is tuned
+          for Easy Apply; others are best-effort generic fills.
         </p>
         <div className="flex flex-wrap gap-2 mt-3">
           {platforms.map((p) => (

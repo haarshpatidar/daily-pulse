@@ -83,19 +83,46 @@ export async function getPage(browser) {
   return page;
 }
 
-// Heuristic login check: a visible login-wall selector means "not logged in";
-// otherwise, if the platform defines a logged-in marker, require it. With no
-// selectors configured (off-platform sites) we optimistically assume usable.
+// Heuristic login check, strongest signal first:
+//   1. A visible login/auth wall  -> definitely NOT logged in.
+//   2. The platform's auth cookie  -> definitely logged in. This is the reliable
+//      one: the cookie is set the moment you sign in and persists in the profile,
+//      so it doesn't suffer the false negatives of waiting for lazy-loaded UI
+//      (e.g. LinkedIn's nav avatar) to paint.
+//   3. The in-page logged-in marker -> fallback for sites without a known cookie.
+//   4. No selectors at all (off-platform) -> optimistically assume usable.
 export async function isLoggedIn(page, config) {
-  if (config.loginWallSelector) {
-    const wall = await page.$(config.loginWallSelector);
-    if (wall) return false;
+  if (config.loginWallSelector && (await page.$(config.loginWallSelector))) return false;
+
+  if (config.authCookie) {
+    try {
+      const host = config.hostnames?.[0];
+      const cookies = host ? await page.cookies(`https://www.${host}`) : await page.cookies();
+      if (cookies.some((c) => c.name === config.authCookie && c.value)) return true;
+    } catch {
+      /* CDP hiccup mid-navigation — fall through to the marker check */
+    }
   }
-  if (config.loggedInSelector) {
-    const marker = await page.$(config.loggedInSelector);
-    return !!marker;
-  }
+
+  if (config.loggedInSelector) return !!(await page.$(config.loggedInSelector));
   return true;
+}
+
+// Poll until the user has signed in inside the live window, or `timeoutMs`
+// elapses. Lets the apply flow open the login page in the SAME window it will
+// fill the form in, wait for the human to authenticate, then carry on — no
+// separate "log in, come back, retry" round trip.
+export async function waitForLogin(page, config, { timeoutMs = 180000, intervalMs = 1500 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      if (await isLoggedIn(page, config)) return true;
+    } catch {
+      /* page is navigating (the login submit) — try again next tick */
+    }
+    await sleep(intervalMs);
+  }
+  return false;
 }
 
 export async function closeBrowser(platform) {
