@@ -1,101 +1,293 @@
 # Daily Pulse
 
-A zero-input personal dashboard. Open the app and your local weather, fresh news, and matching LinkedIn job listings are already there — the backend scrapes everything on a schedule, so the only thing you ever type is a one-time preference setup.
+A zero-input personal dashboard. Open the app and your local weather, fresh news, LinkedIn job listings, and assisted job application tools are already there — the backend scrapes everything on a schedule, so the only thing you ever type is a one-time preference setup.
 
-**Stack:** MongoDB · Express · React (Vite) · Node.js · Zustand · TailwindCSS v4 · Puppeteer · Cheerio · node-cron. No API keys anywhere.
+**Stack:** MongoDB · Express · React 19 (Vite 6) · Node.js 18+ · Zustand · TailwindCSS v4 · Puppeteer · Cheerio · node-cron
+
+---
 
 ## Features
 
-- **Weather** — browser geolocation → Open-Meteo (free, keyless): current temperature, condition, and a 3-day forecast, with the city name resolved via free reverse geocoding.
-- **News feed** — RSS scraped from BBC News, NDTV, TechCrunch, Reuters, The Hindu, Hacker News, and Economic Times every 30 minutes. Filter by category (tech / business / sports / world) and time range — all filtering happens in MongoDB, not the browser.
-- **LinkedIn jobs** — Puppeteer scrapes LinkedIn's public job search for your keywords + location every 3 hours. Each card links straight to the posting.
-- **Preferences** — a slide-in drawer for news categories and job keywords/location. Saved to localStorage; no login.
-- **Dark mode** — full theme toggle, persisted, no flash on reload.
+- **Weather** — browser geolocation → Open-Meteo (free, keyless): current temperature, condition, and a 3-day forecast with city name via free reverse-geocoding.
+- **News feed** — RSS scraped from BBC News, NDTV, TechCrunch, Reuters, The Hindu, Hacker News, and Economic Times every 30 minutes. Filter by category (tech / business / sports / world) and time range. All filtering happens in MongoDB, not the browser.
+- **LinkedIn jobs** — Puppeteer scrapes LinkedIn's public job search for your keywords + location every 3 hours. Each card links directly to the posting.
+- **Assisted apply** — auto-fill job applications in a visible browser window: upload your resume, manage your apply profile, and track submitted applications.
+- **Company enrichment** — scrape and track company lead data tied to job postings.
+- **Preferences** — a slide-in drawer for news categories and job keywords/location. Persisted to localStorage; no login required.
+- **Dark mode** — full theme toggle, persisted across reloads.
+- **Pagination** — for both news and job feeds.
 
-## Project structure
+---
+
+## Project Structure
 
 ```
 daily-pulse/
-├── client/                  # React (Vite) app
-│   └── src/
-│       ├── components/      # all hand-built — no UI libraries
-│       ├── store/           # Zustand stores (prefs persist to localStorage)
-│       └── lib/             # fetch + time helpers
-└── server/
-    ├── models/              # Article, Job, JobSearch (Mongoose)
+├── client/                  # React 19 (Vite 6) frontend
+│   ├── src/
+│   │   ├── components/      # All hand-built — no UI libraries
+│   │   ├── store/           # Zustand stores (prefs persist to localStorage)
+│   │   └── lib/             # Fetch helpers and time utilities
+│   ├── .env.example
+│   └── vite.config.js
+└── server/                  # Express backend
+    ├── models/              # Mongoose schemas
+    ├── routes/              # Express route handlers
     ├── scrapers/            # news.scraper.js (cheerio+axios), jobs.scraper.js (Puppeteer)
     ├── cron/                # scheduler.js (node-cron)
-    ├── routes/              # news, jobs, weather
-    ├── utils/               # shared timeRange → date cutoff
+    ├── utils/               # Shared utilities (timeRange, etc.)
+    ├── uploads/             # Resume uploads (git-ignored)
+    ├── .apply-sessions/     # Browser session data (git-ignored)
+    ├── .env.example
     └── index.js
 ```
 
-## Setup
+---
 
-Requirements: Node 18+, MongoDB (local install, Docker, or a free [Atlas](https://www.mongodb.com/atlas) cluster).
+## Prerequisites
+
+| Requirement | Minimum version | Notes |
+|---|---|---|
+| Node.js | 18+ | v20 LTS or v22+ recommended |
+| npm | 9+ | Bundled with Node.js |
+| MongoDB | 6+ | Local install, Docker, or free Atlas cluster |
+| Git | any | For cloning |
+
+---
+
+## Setup — Step by Step
+
+### 1. Clone the repository
 
 ```bash
-# 1. MongoDB — e.g. via Docker
-docker run -d --name daily-pulse-mongo -p 27017:27017 mongo:7
+git clone https://github.com/your-username/daily-pulse.git
+cd daily-pulse
+```
 
-# 2. Server
+### 2. Start MongoDB
+
+**Option A — Docker (recommended, no local install needed):**
+
+```bash
+docker run -d \
+  --name daily-pulse-mongo \
+  -p 27017:27017 \
+  mongo:7
+```
+
+**Option B — Local MongoDB install:**
+
+Make sure `mongod` is running. The default connection (`mongodb://127.0.0.1:27017`) will work with no changes.
+
+**Option C — MongoDB Atlas (cloud, free M0 tier):**
+
+Create a free cluster at [mongodb.com/atlas](https://www.mongodb.com/atlas), copy the connection string, and set it as `MONGO_URI` in `server/.env` (step 4).
+
+### 3. Install dependencies
+
+Run these two commands — they are independent, so you can open two terminals or run them sequentially:
+
+```bash
+# Terminal 1 — Backend
 cd server
-npm install                  # downloads Chromium for Puppeteer (~170 MB)
-cp .env.example .env         # adjust MONGO_URI if needed
-npm run dev                  # http://localhost:5000
+npm install
+# Note: Puppeteer downloads Chromium (~170 MB) on first install
+```
 
-# 3. Client (separate terminal)
+```bash
+# Terminal 2 — Frontend
 cd client
 npm install
-npm run dev                  # http://localhost:5173 (proxies /api → :5000)
 ```
 
-On boot the server immediately runs a news scrape, so the feed fills within seconds. Jobs appear after you save keywords in the preference drawer (first scrape takes ~30–60 s; the UI polls until it lands).
+### 4. Configure environment variables
 
-### Single-service production build
-
-The server serves `client/dist` automatically when it exists:
+**Server:**
 
 ```bash
-cd client && npm run build
-cd ../server && npm start    # whole app on http://localhost:5000
+cd server
+cp .env.example .env
 ```
 
-For separate hosting (e.g. client on Netlify/Vercel, server on Render/Railway), set `VITE_API_URL=https://your-server` when building the client. Note: the server needs a host that allows headless Chrome (Render and Railway work; serverless platforms don't).
+Open `server/.env` and adjust as needed (see [Environment Variables](#environment-variables) below).
 
-## How the backend works
+**Client (optional — only needed for production or non-default API URL):**
 
-| What | Schedule | How |
+```bash
+cd client
+cp .env.example .env
+```
+
+### 5. Start the development servers
+
+You need **two terminals** running simultaneously.
+
+**Terminal 1 — Backend (port 5000):**
+
+```bash
+cd server
+npm run dev
+```
+
+**Terminal 2 — Frontend (port 5173):**
+
+```bash
+cd client
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+The Vite dev server proxies all `/api/*` requests to `http://localhost:5000` automatically — no CORS setup needed during development.
+
+### 6. First-run data population
+
+- **Weather** — allow location access in the browser; data loads immediately.
+- **News** — the server runs a scrape on boot; the feed fills within seconds.
+- **Jobs** — open the preferences drawer (gear icon), enter job keywords and location, and save. The first scrape runs within 30–60 seconds; the UI polls until data arrives. After that, jobs refresh every 3 hours automatically.
+
+---
+
+## Environment Variables
+
+### `server/.env`
+
+| Variable | Default | Required | Description |
+|---|---|---|---|
+| `MONGO_URI` | `mongodb://127.0.0.1:27017/daily-pulse` | Yes | MongoDB connection string |
+| `PORT` | `5000` | No | Express server port |
+| `APPLY_HEADLESS` | `false` | No | Set to `true` to run Puppeteer in headless mode (no visible browser). Leave `false` for assisted apply — you review and submit in the visible window. |
+| `APPLY_LOGIN_TIMEOUT_MS` | `180000` | No | Milliseconds to wait for you to log in to a job platform before the assistant times out (default: 3 minutes). |
+
+### `client/.env`
+
+| Variable | Default | Required | Description |
+|---|---|---|---|
+| `VITE_API_URL` | _(same origin)_ | No | API base URL. Only set this for production deployments where the client and server are on different domains (e.g. `https://api.yourdomain.com`). Leave unset in development. |
+
+---
+
+## Available Scripts
+
+### Server (`cd server`)
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Start server with nodemon (auto-restarts on file changes) |
+| `npm start` | Start server without hot-reload (production) |
+
+### Client (`cd client`)
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Start Vite dev server at http://localhost:5173 |
+| `npm run build` | Build production bundle → `client/dist/` |
+| `npm run preview` | Preview the production build locally |
+
+---
+
+## Production Build
+
+### Option A — Single service (server serves the built client)
+
+The server automatically serves `client/dist/` when it exists.
+
+```bash
+# 1. Build the frontend
+cd client
+npm run build
+
+# 2. Start the server — serves everything on port 5000
+cd ../server
+npm start
+```
+
+Visit [http://localhost:5000](http://localhost:5000).
+
+### Option B — Separate hosting (client on CDN, server standalone)
+
+Build the client with the server's public URL:
+
+```bash
+cd client
+VITE_API_URL=https://your-server.com npm run build
+```
+
+Then deploy `client/dist/` to Netlify, Vercel, or any static host, and deploy `server/` to a platform that supports headless Chrome (Render, Railway, or a VPS). Serverless platforms (AWS Lambda, Vercel Functions) do **not** support Puppeteer.
+
+---
+
+## API Reference
+
+| Endpoint | Method | Params | Description |
+|---|---|---|---|
+| `/api/news` | GET | `category` (comma-sep), `timeRange` (`24h`\|`3d`\|`7d`), `limit` (max 120) | Filtered, sorted news articles |
+| `/api/jobs` | GET | `keyword`, `location`, `timeRange`, `limit` (max 500) | Filtered, sorted job listings |
+| `/api/jobs/preferences` | POST | `{ keywords, location }` | Save job search prefs + trigger immediate scrape |
+| `/api/weather` | GET | `lat`, `lon` | Current weather + 3-day forecast (10-min cache) |
+| `/api/apply/*` | GET/POST | — | Resume upload, profile management, application tracking |
+| `/api/companies/*` | GET/POST | — | Company lead search and enrichment |
+| `/api/health` | GET | — | Server and DB status |
+
+---
+
+## How the Backend Works
+
+### Scheduled scrapers
+
+| Data | Schedule | Mechanism |
 |---|---|---|
-| News | every 30 min (`*/30 * * * *`) + on boot | 19 RSS feeds fetched with axios, parsed with cheerio (XML mode), tagged with a category per feed, bulk-upserted on unique `url` |
-| Jobs | every 3 h (`0 */3 * * *`) + on boot + on preference save | Puppeteer loads LinkedIn's public search, extracts cards, strips tracking params from URLs, bulk-upserts on unique `url` |
+| News | Every 30 min + on boot | 19 RSS feeds via axios + cheerio (XML), bulk-upserted on unique `url` |
+| Jobs | Every 3 h + on boot + on preference save | Puppeteer → LinkedIn public search, strips tracking params, bulk-upserted on unique `url` |
+| Companies | Every 6 h + on boot | Company lead enrichment from job data |
 
-Both scrapers have overlap guards (a slow run is skipped, never doubled) and per-feed/per-search error isolation — one dead source never breaks the rest.
+All scrapers have **overlap guards** (a slow run is skipped, never doubled) and **per-feed error isolation** (one dead source never breaks the rest).
 
-**Preference sync:** your preferences live in localStorage, but the cron scraper runs server-side, so saving the drawer also POSTs the job search to the server (stored in the `JobSearch` collection). v1 is single-user: the latest saved search replaces older ones.
+### Data retention
 
-## API
+Both `Article` and `Job` documents have a **TTL index** that auto-deletes records after 30 days — no manual cleanup needed.
 
-| Endpoint | Params | Notes |
-|---|---|---|
-| `GET /api/news` | `category` (comma-separated), `timeRange` (`24h`\|`3d`\|`7d`), `limit` | MongoDB-side filtering, sorted by `publishedAt` |
-| `GET /api/jobs` | `keyword`, `location`, `timeRange`, `limit` | sorted by `postedAt` |
-| `POST /api/jobs/preferences` | `{ keywords, location }` | registers the search + triggers an immediate scrape |
-| `GET /api/weather` | `lat`, `lon` | Open-Meteo proxy + reverse-geocoded city, 10-min cache |
-| `GET /api/health` | — | server + DB status |
+### Preference sync
 
-## Environment
+Preferences live in localStorage, but job scraping runs server-side. Saving the drawer POSTs your job search to the server (`JobSearch` collection) which triggers an immediate scrape in addition to the 3-hour cron.
 
-`server/.env.example`:
+---
 
+## Troubleshooting
+
+**MongoDB connection refused:**
+```bash
+# Check if MongoDB is running (Docker)
+docker ps | grep daily-pulse-mongo
+
+# Start it if stopped
+docker start daily-pulse-mongo
 ```
-MONGO_URI=mongodb://127.0.0.1:27017/daily-pulse
+
+**Puppeteer/Chromium error on Linux:**
+```bash
+# Install missing system libraries
+sudo apt-get install -y \
+  libnspr4 libnss3 libasound2 libatk-bridge2.0-0 \
+  libgtk-3-0 libgbm-dev
 ```
 
-That's the only variable. `PORT` defaults to 5000.
+**Jobs not appearing:**
+- Check the server console for LinkedIn auth-wall warnings — LinkedIn sometimes blocks headless browsers.
+- The scraper detects this, logs a warning, and retries on the next 3-hour cron cycle.
+- Ensure you have saved keywords in the preferences drawer.
 
-## Honest caveats
+**Port already in use:**
+```bash
+# Change the port in server/.env
+PORT=5001
+```
 
-- **LinkedIn** has no public API for this and its ToS prohibit scraping; treat this as a personal-use tool. LinkedIn sometimes serves an auth wall to headless browsers — the scraper detects that, logs a warning, and retries on the next cron run rather than crashing. Selectors may need updating if LinkedIn changes its public markup.
-- **Reuters** retired its public RSS feeds, so Reuters headlines come through Google News' RSS search scoped to `reuters.com` sections. Links route through a Google News redirect to the original article.
-- **Free tiers sleep.** On Render's free plan the server sleeps after inactivity, which also pauses cron until the next request wakes it.
+---
+
+## Honest Caveats
+
+- **LinkedIn** has no public API for this use case and its ToS prohibits scraping. Treat this as a personal-use tool. The scraper uses only public search pages — no login, no private data.
+- **Reuters** retired its public RSS feeds; Reuters headlines come through Google News RSS scoped to `reuters.com`. Links route via a Google News redirect to the original article.
+- **Free tiers sleep.** On Render's free plan the server sleeps after inactivity, which pauses cron jobs until the next request wakes it.
+- **Atlas free tier** — the M0 cluster provides 512 MB of storage. TTL indexes keep data trimmed automatically.
