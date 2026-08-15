@@ -9,7 +9,13 @@ import newsRoutes from "./routes/news.routes.js";
 import jobsRoutes from "./routes/jobs.routes.js";
 import companiesRoutes from "./routes/companies.routes.js";
 import weatherRoutes from "./routes/weather.routes.js";
-import applyRoutes from "./routes/apply.routes.js";
+// --- Assisted apply: DISABLED 2026-08-16 ---
+// Left in the tree but unwired. It needs a headful Chrome, a persistent
+// userDataDir and disk writes, none of which work on a normal Node host.
+// Keeping this import out also means models/Application.js and
+// models/ApplyProfile.js are never imported, so mongoose never registers
+// those collections and the DB stays untouched by this feature.
+// import applyRoutes from "./routes/apply.routes.js";
 import { startScheduler } from "./cron/scheduler.js";
 
 const PORT = process.env.PORT || 5000;
@@ -34,15 +40,17 @@ app.use("/api/news", newsRoutes);
 app.use("/api/jobs", jobsRoutes);
 app.use("/api/companies", companiesRoutes);
 app.use("/api/weather", weatherRoutes);
-app.use("/api/apply", applyRoutes);
+// app.use("/api/apply", applyRoutes); // disabled — see note above
 
 // Serve auto-fill screenshots (apply review previews). Only the screenshots
 // subdir is public; resume bytes are served through the authenticated-ish
 // /api/apply/resume route instead of by guessable filename.
-app.use(
-  "/uploads/screenshots",
-  express.static(path.join(__dirname, "uploads", "screenshots"))
-);
+// Disabled with the apply feature — nothing writes to uploads/ anymore, and a
+// hosted container's filesystem is ephemeral anyway.
+// app.use(
+//   "/uploads/screenshots",
+//   express.static(path.join(__dirname, "uploads", "screenshots"))
+// );
 
 // If the client has been built, serve it from the same process so a single
 // free-tier service can host the whole app.

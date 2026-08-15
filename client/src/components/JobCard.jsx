@@ -1,21 +1,9 @@
-import { useState } from "react";
 import { timeAgo } from "../lib/time.js";
-import { useApply } from "../store/useApply.js";
-import { useUi } from "../store/useUi.js";
 
+// Assisted apply disabled 2026-08-16 — the "Queue apply" button and its
+// useApply/useUi wiring are commented out below. The plain "Apply" link stays:
+// it's just an external link to the listing, with no backend involved.
 export default function JobCard({ job, index }) {
-  const queue = useApply((s) => s.queue);
-  const setView = useUi((s) => s.setView);
-  const [queued, setQueued] = useState(false);
-
-  const onQueue = async () => {
-    const app = await queue(job);
-    if (app) {
-      setQueued(true);
-      setView("apply");
-    }
-  };
-
   return (
     <article
       className="card card-enter"
@@ -30,14 +18,14 @@ export default function JobCard({ job, index }) {
       <div className="flex items-center justify-between mt-4">
         <span className="text-[13px] text-muted">{timeAgo(job.postedAt)}</span>
         <div className="flex items-center gap-2">
-          <button
+          {/* <button
             className="apply-btn-ghost"
             onClick={onQueue}
             disabled={queued}
             aria-label={`Queue ${job.title} for assisted apply`}
           >
             {queued ? "Queued ✓" : "Queue apply"}
-          </button>
+          </button> */}
           <a
             href={job.url}
             target="_blank"
