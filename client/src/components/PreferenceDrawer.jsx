@@ -6,6 +6,26 @@ import { useJobs } from "../store/useJobs.js";
 import { useCompanies } from "../store/useCompanies.js";
 import { CloseIcon } from "./icons.jsx";
 
+// years-of-experience bands; null means "no bound on this end"
+const EXPERIENCE_PRESETS = [
+  { id: "any", label: "Any", min: null, max: null },
+  { id: "0-2", label: "0–2 yrs", min: 0, max: 2 },
+  { id: "0-3", label: "0–3 yrs", min: 0, max: 3 },
+  { id: "2-5", label: "2–5 yrs", min: 2, max: 5 },
+  { id: "5+", label: "5+ yrs", min: 5, max: null },
+];
+
+// null/undefined -> empty input; undefined shows up for preferences persisted
+// before the experience filter existed
+const asField = (value) => (value === null || value === undefined ? "" : String(value));
+
+const asNumber = (raw) => {
+  const trimmed = String(raw).trim();
+  if (trimmed === "") return null;
+  const n = Number(trimmed);
+  return Number.isFinite(n) && n >= 0 ? Math.min(Math.trunc(n), 40) : null;
+};
+
 export default function PreferenceDrawer() {
   const open = useUi((s) => s.drawerOpen);
   const closeDrawer = useUi((s) => s.closeDrawer);
@@ -13,8 +33,19 @@ export default function PreferenceDrawer() {
   const [selected, setSelected] = useState([]);
   const [keywords, setKeywords] = useState("");
   const [location, setLocation] = useState("");
+  const [expMin, setExpMin] = useState("");
+  const [expMax, setExpMax] = useState("");
   const [leadCompanies, setLeadCompanies] = useState("");
   const [leadFromJobs, setLeadFromJobs] = useState(true);
+
+  const activePreset = EXPERIENCE_PRESETS.find(
+    (p) => p.min === asNumber(expMin) && p.max === asNumber(expMax)
+  );
+
+  const applyPreset = (preset) => {
+    setExpMin(preset.min === null ? "" : String(preset.min));
+    setExpMax(preset.max === null ? "" : String(preset.max));
+  };
 
   // re-seed local form state from saved prefs every time the drawer opens
   useEffect(() => {
@@ -23,6 +54,8 @@ export default function PreferenceDrawer() {
       setSelected(prefs.categories);
       setKeywords(prefs.jobKeywords);
       setLocation(prefs.jobLocation);
+      setExpMin(asField(prefs.jobExpMin));
+      setExpMax(asField(prefs.jobExpMax));
       setLeadCompanies(prefs.leadCompanies);
       setLeadFromJobs(prefs.leadFromJobs);
     }
@@ -51,10 +84,19 @@ export default function PreferenceDrawer() {
     const nextLocation = location.trim();
     const nextLeadCompanies = leadCompanies.trim();
 
+    // tolerate a back-to-front range rather than silently returning nothing
+    let nextExpMin = asNumber(expMin);
+    let nextExpMax = asNumber(expMax);
+    if (nextExpMin !== null && nextExpMax !== null && nextExpMin > nextExpMax) {
+      [nextExpMin, nextExpMax] = [nextExpMax, nextExpMin];
+    }
+
     usePrefs.getState().savePreferences({
       categories: selected,
       jobKeywords: nextKeywords,
       jobLocation: nextLocation,
+      jobExpMin: nextExpMin,
+      jobExpMax: nextExpMax,
       leadCompanies: nextLeadCompanies,
       leadFromJobs,
     });
@@ -145,8 +187,52 @@ export default function PreferenceDrawer() {
                 />
               </label>
             </div>
+
+            <div className="mt-6">
+              <span className="text-[13px] text-muted">Years of experience</span>
+              <div className="flex flex-wrap gap-2 mt-2" role="group" aria-label="Experience range">
+                {EXPERIENCE_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    className={`pill ${activePreset?.id === preset.id ? "active" : ""}`}
+                    onClick={() => applyPreset(preset)}
+                    aria-pressed={activePreset?.id === preset.id}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-3 mt-3">
+                <label className="flex-1">
+                  <span className="text-[13px] text-muted">Min</span>
+                  <input
+                    className="drawer-input mt-1"
+                    type="number"
+                    min="0"
+                    max="40"
+                    value={expMin}
+                    onChange={(e) => setExpMin(e.target.value)}
+                    placeholder="any"
+                  />
+                </label>
+                <label className="flex-1">
+                  <span className="text-[13px] text-muted">Max</span>
+                  <input
+                    className="drawer-input mt-1"
+                    type="number"
+                    min="0"
+                    max="40"
+                    value={expMax}
+                    onChange={(e) => setExpMax(e.target.value)}
+                    placeholder="any"
+                  />
+                </label>
+              </div>
+            </div>
+
             <p className="text-[13px] text-muted mt-4">
-              Listings refresh from LinkedIn every 3 hours.
+              Listings refresh from LinkedIn every 3 hours. Jobs that don’t state an
+              experience requirement are always shown.
             </p>
           </section>
 

@@ -1,9 +1,20 @@
 import { timeAgo } from "../lib/time.js";
 
+// expMin null means the posting never stated a requirement — say nothing
+// rather than implying zero
+function experienceLabel(job) {
+  if (job.expMin === null || job.expMin === undefined) return "";
+  if (job.expMax === null || job.expMax === undefined) return `${job.expMin}+ yrs`;
+  if (job.expMax === job.expMin) return `${job.expMin} yrs`;
+  return `${job.expMin}–${job.expMax} yrs`;
+}
+
 // Assisted apply disabled 2026-08-16 — the "Queue apply" button and its
 // useApply/useUi wiring are commented out below. The plain "Apply" link stays:
 // it's just an external link to the listing, with no backend involved.
 export default function JobCard({ job, index }) {
+  const experience = experienceLabel(job);
+
   return (
     <article
       className="card card-enter"
@@ -16,7 +27,15 @@ export default function JobCard({ job, index }) {
       </p>
 
       <div className="flex items-center justify-between mt-4">
-        <span className="text-[13px] text-muted">{timeAgo(job.postedAt)}</span>
+        <span className="text-[13px] text-muted">
+          {timeAgo(job.postedAt)}
+          {experience && (
+            <span title={job.expText ? `Posting says: “${job.expText}”` : undefined}>
+              {" · "}
+              {experience}
+            </span>
+          )}
+        </span>
         <div className="flex items-center gap-2">
           {/* <button
             className="apply-btn-ghost"

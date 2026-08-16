@@ -10,10 +10,11 @@ A zero-input personal dashboard. Open the app and your local weather, fresh news
 
 - **Weather** — browser geolocation → Open-Meteo (free, keyless): current temperature, condition, and a 3-day forecast with city name via free reverse-geocoding.
 - **News feed** — RSS scraped from BBC News, NDTV, TechCrunch, Reuters, The Hindu, Hacker News, and Economic Times every 30 minutes. Filter by category (tech / business / sports / world) and time range. All filtering happens in MongoDB, not the browser.
-- **LinkedIn jobs** — Puppeteer scrapes LinkedIn's public job search for your keywords + location every 3 hours. Each card links directly to the posting.
+- **LinkedIn jobs** — scrapes LinkedIn's public job search (plain HTTP + Cheerio, no browser) for your keywords + location every 3 hours. Each card links directly to the posting.
+- **Experience filter** — each posting's detail page is read for the years of experience it asks for, so you can limit the feed to a band (e.g. 0–3 years). Postings that never state a requirement are always shown rather than guessed at.
 - **Assisted apply** — auto-fill job applications in a visible browser window: upload your resume, manage your apply profile, and track submitted applications.
 - **Company enrichment** — scrape and track company lead data tied to job postings.
-- **Preferences** — a slide-in drawer for news categories and job keywords/location. Persisted to localStorage; no login required.
+- **Preferences** — a slide-in drawer for news categories and job keywords/location/experience range. Persisted to localStorage; no login required.
 - **Dark mode** — full theme toggle, persisted across reloads.
 - **Pagination** — for both news and job feeds.
 
@@ -33,7 +34,8 @@ daily-pulse/
 └── server/                  # Express backend
     ├── models/              # Mongoose schemas
     ├── routes/              # Express route handlers
-    ├── scrapers/            # news.scraper.js (cheerio+axios), jobs.scraper.js (Puppeteer)
+    ├── scrapers/            # news.scraper.js, jobs.scraper.js (both cheerio+axios),
+    │                        # experience.js (years-of-experience parser)
     ├── cron/                # scheduler.js (node-cron)
     ├── utils/               # Shared utilities (timeRange, etc.)
     ├── uploads/             # Resume uploads (git-ignored)
@@ -144,7 +146,8 @@ The Vite dev server proxies all `/api/*` requests to `http://localhost:5000` aut
 
 - **Weather** — allow location access in the browser; data loads immediately.
 - **News** — the server runs a scrape on boot; the feed fills within seconds.
-- **Jobs** — open the preferences drawer (gear icon), enter job keywords and location, and save. The first scrape runs within 30–60 seconds; the UI polls until data arrives. After that, jobs refresh every 3 hours automatically.
+- **Jobs** — open the preferences drawer (gear icon), enter job keywords, location and an optional experience range, and save. Listings appear within about half a minute; the UI polls until data arrives. Experience tags fill in behind them. After that, jobs refresh every 3 hours automatically.
+  Changing only the experience range re-filters instantly — it's applied by the API, so nothing is re-scraped.
 
 ---
 
@@ -222,7 +225,7 @@ Then deploy `client/dist/` to Netlify, Vercel, or any static host, and deploy `s
 | Endpoint | Method | Params | Description |
 |---|---|---|---|
 | `/api/news` | GET | `category` (comma-sep), `timeRange` (`24h`\|`3d`\|`7d`), `limit` (max 120) | Filtered, sorted news articles |
-| `/api/jobs` | GET | `keyword`, `location`, `timeRange`, `limit` (max 500) | Filtered, sorted job listings |
+| `/api/jobs` | GET | `keyword`, `location`, `timeRange`, `expMin`, `expMax`, `limit` (max 500) | Filtered, sorted job listings |
 | `/api/jobs/preferences` | POST | `{ keywords, location }` | Save job search prefs + trigger immediate scrape |
 | `/api/weather` | GET | `lat`, `lon` | Current weather + 3-day forecast (10-min cache) |
 | `/api/apply/*` | GET/POST | — | Resume upload, profile management, application tracking |
@@ -238,7 +241,7 @@ Then deploy `client/dist/` to Netlify, Vercel, or any static host, and deploy `s
 | Data | Schedule | Mechanism |
 |---|---|---|
 | News | Every 30 min + on boot | 19 RSS feeds via axios + cheerio (XML), bulk-upserted on unique `url` |
-| Jobs | Every 3 h + on boot + on preference save | Puppeteer → LinkedIn public search, strips tracking params, bulk-upserted on unique `url` |
+| Jobs | Every 3 h + on boot + on preference save | HTTP → LinkedIn public search, strips tracking params, bulk-upserted on unique `url`. Listings are saved first, then detail pages are read for experience on a per-run budget — leftovers are picked up next run |
 | Companies | Every 6 h + on boot | Company lead enrichment from job data |
 
 All scrapers have **overlap guards** (a slow run is skipped, never doubled) and **per-feed error isolation** (one dead source never breaks the rest).

@@ -22,7 +22,7 @@ export const useJobs = create((set, get) => ({
   },
 
   fetch: async ({ background = false } = {}) => {
-    const { jobKeywords, jobLocation } = usePrefs.getState();
+    const { jobKeywords, jobLocation, jobExpMin, jobExpMax } = usePrefs.getState();
     if (!jobKeywords) {
       set({ jobs: [], loading: false });
       return;
@@ -37,6 +37,10 @@ export const useJobs = create((set, get) => ({
         limit: "500",
       });
       if (jobLocation) params.set("location", jobLocation);
+      // experience is filtered server-side from the parsed requirement, so
+      // changing it re-filters instantly — no re-scrape needed
+      if (jobExpMin !== null && jobExpMin !== undefined) params.set("expMin", jobExpMin);
+      if (jobExpMax !== null && jobExpMax !== undefined) params.set("expMax", jobExpMax);
       const data = await getJSON(`/api/jobs?${params}`);
       set({ jobs: data.jobs, loading: false, error: null });
     } catch (err) {
@@ -63,16 +67,18 @@ export const useJobs = create((set, get) => ({
     set({ scraping: true });
     if (pollTimer) clearInterval(pollTimer);
     let tries = 0;
-    // a full paginated scrape can take ~1.5 min, so poll for up to ~3 min
+    // The scraper now saves listings before it reads experience details, so the
+    // first jobs land in well under a minute — check often, and keep a ceiling
+    // of ~2 min for a slow or throttled run.
     pollTimer = setInterval(async () => {
       tries += 1;
       await get().fetch({ background: true });
-      if (get().jobs.length > 0 || tries >= 22) {
+      if (get().jobs.length > 0 || tries >= 30) {
         clearInterval(pollTimer);
         pollTimer = null;
         set({ scraping: false });
       }
-    }, 8000);
+    }, 4000);
   },
 
   // On app load: if the user has keywords saved but the server has no jobs

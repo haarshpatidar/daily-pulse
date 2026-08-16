@@ -15,6 +15,10 @@ export const usePrefs = create(
       categories: ["tech", "business", "sports", "world"],
       jobKeywords: "",
       jobLocation: "",
+      // years-of-experience band the feed should show; null = no bound.
+      // jobExpMax null with a min set means "N+ years".
+      jobExpMin: null,
+      jobExpMax: null,
       // company-lead search: names the user typed + whether to also scan
       // companies pulled from their scraped job results
       leadCompanies: "",
@@ -24,11 +28,21 @@ export const usePrefs = create(
       toggleTheme: () =>
         set((s) => ({ theme: s.theme === "light" ? "dark" : "light" })),
 
-      savePreferences: ({ categories, jobKeywords, jobLocation, leadCompanies, leadFromJobs }) =>
+      savePreferences: ({
+        categories,
+        jobKeywords,
+        jobLocation,
+        jobExpMin,
+        jobExpMax,
+        leadCompanies,
+        leadFromJobs,
+      }) =>
         set({
           categories,
           jobKeywords,
           jobLocation,
+          jobExpMin,
+          jobExpMax,
           leadCompanies,
           leadFromJobs,
           onboarded: true,

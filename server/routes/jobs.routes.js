@@ -2,11 +2,19 @@ import { Router } from "express";
 import Job from "../models/Job.js";
 import JobSearch from "../models/JobSearch.js";
 import { scrapeJobsForSearch } from "../scrapers/jobs.scraper.js";
+import { experienceQuery } from "../scrapers/experience.js";
 import { timeRangeCutoff } from "../utils/time.js";
 
 const router = Router();
 
-// GET /api/jobs?keyword=react%20developer&location=remote&timeRange=3d
+// clamp a years-of-experience bound; blank/garbage means "no bound"
+function expBound(raw) {
+  if (raw === undefined || raw === null || String(raw).trim() === "") return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? Math.min(Math.max(Math.trunc(n), 0), 40) : null;
+}
+
+// GET /api/jobs?keyword=react%20developer&location=remote&timeRange=3d&expMin=0&expMax=3
 router.get("/", async (req, res) => {
   try {
     const { keyword, location, timeRange } = req.query;
@@ -19,10 +27,17 @@ router.get("/", async (req, res) => {
     const cutoff = timeRangeCutoff(timeRange);
     if (cutoff) query.postedAt = { $gte: cutoff };
 
+    // Jobs whose stated requirement overlaps the requested band, plus every job
+    // that never stated one — a vague posting is never hidden.
+    const expFilter = experienceQuery(expBound(req.query.expMin), expBound(req.query.expMax));
+    if (expFilter) Object.assign(query, expFilter);
+
     const jobs = await Job.find(query)
       .sort({ postedAt: -1 })
       .limit(limit)
-      .select("title company location url postedAt postedText keyword")
+      .select(
+        "title company location url postedAt postedText keyword expMin expMax expText seniority"
+      )
       .lean();
 
     res.json({ count: jobs.length, jobs });
