@@ -3,6 +3,7 @@ import Job from "../models/Job.js";
 import JobSearch from "../models/JobSearch.js";
 import { scrapeJobsForSearch } from "../scrapers/jobs.scraper.js";
 import { experienceQuery } from "../scrapers/experience.js";
+import { employmentTypeQuery } from "../scrapers/employmentType.js";
 import { timeRangeCutoff } from "../utils/time.js";
 
 const router = Router();
@@ -32,11 +33,18 @@ router.get("/", async (req, res) => {
     const expFilter = experienceQuery(expBound(req.query.expMin), expBound(req.query.expMax));
     if (expFilter) Object.assign(query, expFilter);
 
+    const requestedTypes = String(req.query.employmentType || "")
+      .split(",")
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean);
+    const employmentFilter = employmentTypeQuery(requestedTypes);
+    if (employmentFilter) Object.assign(query, employmentFilter);
+
     const jobs = await Job.find(query)
       .sort({ postedAt: -1 })
       .limit(limit)
       .select(
-        "title company location url postedAt postedText keyword expMin expMax expText seniority"
+        "title company location url postedAt postedText keyword expMin expMax expText seniority employmentType"
       )
       .lean();
 

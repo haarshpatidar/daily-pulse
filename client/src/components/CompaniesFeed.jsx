@@ -72,6 +72,13 @@ function Filters({ filters, setFilter, clearFilters }) {
       >
         Hiring now
       </button>
+      <button
+        className={`pill ${filters.hiringContract ? "active" : ""}`}
+        onClick={() => setFilter("hiringContract", !filters.hiringContract)}
+        aria-pressed={filters.hiringContract}
+      >
+        Hiring for contract work
+      </button>
       <button className="text-[13px] text-accent hover:underline ml-1" onClick={clearFilters}>
         Reset
       </button>
@@ -90,6 +97,7 @@ export default function CompaniesFeed({ limit, compact = false }) {
   const hasActiveFilters =
     filters.q ||
     filters.hiring ||
+    filters.hiringContract ||
     filters.hasHrEmail ||
     filters.minEmployees ||
     filters.maxEmployees ||

@@ -3,6 +3,7 @@ import * as cheerio from "cheerio";
 import Job from "../models/Job.js";
 import JobSearch from "../models/JobSearch.js";
 import { extractExperience } from "./experience.js";
+import { normalizeEmploymentType, detectEmploymentTypeFromText } from "./employmentType.js";
 
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
@@ -224,21 +225,33 @@ export async function collectListings(keywords, location) {
 // Read the detail page for its stated experience requirement and seniority.
 // Returns null when the page can't be read — the job is still kept, just
 // untagged, so it stays visible in the feed.
-async function readDetail(url) {
+async function readDetail(url, title) {
   const $ = cheerio.load(await getHtml(url));
 
   let seniority = "";
+  let employmentTypeLabel = "";
   $(".description__job-criteria-item").each((_, el) => {
     const label = $(el).find("h3").first().text();
     if (/seniority/i.test(label)) seniority = $(el).find("span").first().text().trim();
+    if (/employment\s*type/i.test(label)) {
+      employmentTypeLabel = $(el).find("span").first().text().trim();
+    }
   });
 
   const description =
     $(".show-more-less-html__markup").text() || $(".description__text").text();
   const experience = extractExperience(description);
 
+  // LinkedIn's own criteria label is authoritative when present — it's the
+  // employer's own selection. Only fall back to scanning the title +
+  // description when the posting doesn't carry that criteria item.
+  const employmentType =
+    normalizeEmploymentType(employmentTypeLabel) ||
+    detectEmploymentTypeFromText(`${title || ""} ${description}`);
+
   return {
     seniority,
+    employmentType,
     expMin: experience ? experience.min : null,
     expMax: experience ? experience.max : null,
     expText: experience ? experience.text : "",
@@ -246,10 +259,16 @@ async function readDetail(url) {
 }
 
 // Tag listings with experience data. Only jobs we haven't already read are
-// fetched, so repeat scrapes cost almost nothing.
+// fetched, so repeat scrapes cost almost nothing. Also requires employmentType
+// to be present (not just expCheckedAt) so jobs read before that field existed
+// get one more pass to backfill it, instead of staying untagged forever.
 async function enrichExperience(listings) {
   const known = await Job.find(
-    { url: { $in: listings.map((l) => l.url) }, expCheckedAt: { $ne: null } },
+    {
+      url: { $in: listings.map((l) => l.url) },
+      expCheckedAt: { $ne: null },
+      employmentType: { $exists: true },
+    },
     { url: 1 }
   ).lean();
   const alreadyRead = new Set(known.map((j) => j.url));
@@ -272,7 +291,9 @@ async function enrichExperience(listings) {
       return;
     }
     try {
-      Object.assign(listing, await readDetail(listing.url), { expCheckedAt: new Date() });
+      Object.assign(listing, await readDetail(listing.url, listing.title), {
+        expCheckedAt: new Date(),
+      });
     } catch (err) {
       if (err instanceof BlockedError) blocked += 1;
     }
@@ -309,6 +330,7 @@ async function upsertJobs(jobs, keywords, location) {
         expMax: j.expMax,
         expText: j.expText,
         seniority: j.seniority,
+        employmentType: j.employmentType || "",
         expCheckedAt: j.expCheckedAt,
       });
     }

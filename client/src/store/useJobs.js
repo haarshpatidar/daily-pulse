@@ -22,7 +22,8 @@ export const useJobs = create((set, get) => ({
   },
 
   fetch: async ({ background = false } = {}) => {
-    const { jobKeywords, jobLocation, jobExpMin, jobExpMax } = usePrefs.getState();
+    const { jobKeywords, jobLocation, jobExpMin, jobExpMax, jobEmploymentTypes } =
+      usePrefs.getState();
     if (!jobKeywords) {
       set({ jobs: [], loading: false });
       return;
@@ -41,6 +42,9 @@ export const useJobs = create((set, get) => ({
       // changing it re-filters instantly — no re-scrape needed
       if (jobExpMin !== null && jobExpMin !== undefined) params.set("expMin", jobExpMin);
       if (jobExpMax !== null && jobExpMax !== undefined) params.set("expMax", jobExpMax);
+      // employment type is also filtered server-side from the tagged field —
+      // no re-scrape needed, same as experience
+      if (jobEmploymentTypes?.length) params.set("employmentType", jobEmploymentTypes.join(","));
       const data = await getJSON(`/api/jobs?${params}`);
       set({ jobs: data.jobs, loading: false, error: null });
     } catch (err) {

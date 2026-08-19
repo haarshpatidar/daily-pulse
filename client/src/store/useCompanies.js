@@ -7,6 +7,7 @@ let pollTimer = null;
 const EMPTY_FILTERS = {
   q: "",
   hiring: false,
+  hiringContract: false,
   hasHrEmail: false,
   minEmployees: "",
   maxEmployees: "",
@@ -20,6 +21,7 @@ function filterParams(filters) {
   const p = new URLSearchParams({ limit: "1000" });
   if (filters.q) p.set("q", filters.q);
   if (filters.hiring) p.set("hiring", "true");
+  if (filters.hiringContract) p.set("hiringContract", "true");
   if (filters.hasHrEmail) p.set("hasHrEmail", "true");
   if (filters.minEmployees) p.set("minEmployees", filters.minEmployees);
   if (filters.maxEmployees) p.set("maxEmployees", filters.maxEmployees);

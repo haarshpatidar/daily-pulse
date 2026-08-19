@@ -4,6 +4,7 @@ import { useUi } from "../store/useUi.js";
 import { useNews } from "../store/useNews.js";
 import { useJobs } from "../store/useJobs.js";
 import { useCompanies } from "../store/useCompanies.js";
+import { useFreelance } from "../store/useFreelance.js";
 import { CloseIcon } from "./icons.jsx";
 
 // years-of-experience bands; null means "no bound on this end"
@@ -13,6 +14,15 @@ const EXPERIENCE_PRESETS = [
   { id: "0-3", label: "0–3 yrs", min: 0, max: 3 },
   { id: "2-5", label: "2–5 yrs", min: 2, max: 5 },
   { id: "5+", label: "5+ yrs", min: 5, max: null },
+];
+
+// mirrors server/scrapers/employmentType.js's EMPLOYMENT_TYPES
+const EMPLOYMENT_TYPE_OPTIONS = [
+  { id: "contract", label: "Contract / Freelance" },
+  { id: "full-time", label: "Full-time" },
+  { id: "part-time", label: "Part-time" },
+  { id: "temporary", label: "Temporary" },
+  { id: "internship", label: "Internship" },
 ];
 
 // null/undefined -> empty input; undefined shows up for preferences persisted
@@ -35,6 +45,7 @@ export default function PreferenceDrawer() {
   const [location, setLocation] = useState("");
   const [expMin, setExpMin] = useState("");
   const [expMax, setExpMax] = useState("");
+  const [employmentTypes, setEmploymentTypes] = useState([]);
   const [leadCompanies, setLeadCompanies] = useState("");
   const [leadFromJobs, setLeadFromJobs] = useState(true);
 
@@ -56,6 +67,7 @@ export default function PreferenceDrawer() {
       setLocation(prefs.jobLocation);
       setExpMin(asField(prefs.jobExpMin));
       setExpMax(asField(prefs.jobExpMax));
+      setEmploymentTypes(prefs.jobEmploymentTypes || []);
       setLeadCompanies(prefs.leadCompanies);
       setLeadFromJobs(prefs.leadFromJobs);
     }
@@ -70,6 +82,11 @@ export default function PreferenceDrawer() {
   const toggleCategory = (id) =>
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+    );
+
+  const toggleEmploymentType = (id) =>
+    setEmploymentTypes((prev) =>
+      prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
     );
 
   const canSave = selected.length > 0;
@@ -97,6 +114,7 @@ export default function PreferenceDrawer() {
       jobLocation: nextLocation,
       jobExpMin: nextExpMin,
       jobExpMax: nextExpMax,
+      jobEmploymentTypes: employmentTypes,
       leadCompanies: nextLeadCompanies,
       leadFromJobs,
     });
@@ -115,6 +133,7 @@ export default function PreferenceDrawer() {
       useCompanies.getState().syncPreferences();
     }
     useCompanies.getState().fetch();
+    useFreelance.getState().fetch();
     closeDrawer();
   };
 
@@ -230,9 +249,26 @@ export default function PreferenceDrawer() {
               </div>
             </div>
 
+            <div className="mt-6">
+              <span className="text-[13px] text-muted">Engagement type</span>
+              <div className="flex flex-wrap gap-2 mt-2" role="group" aria-label="Engagement type">
+                {EMPLOYMENT_TYPE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    className={`pill ${employmentTypes.includes(opt.id) ? "active" : ""}`}
+                    onClick={() => toggleEmploymentType(opt.id)}
+                    aria-pressed={employmentTypes.includes(opt.id)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <p className="text-[13px] text-muted mt-4">
               Listings refresh from LinkedIn every 3 hours. Jobs that don’t state an
-              experience requirement are always shown.
+              experience requirement, or haven’t been read for engagement type yet,
+              are always shown.
             </p>
           </section>
 

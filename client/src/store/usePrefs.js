@@ -19,6 +19,8 @@ export const usePrefs = create(
       // jobExpMax null with a min set means "N+ years".
       jobExpMin: null,
       jobExpMax: null,
+      // engagement types the feed should show; [] = no filter, show everything
+      jobEmploymentTypes: [],
       // company-lead search: names the user typed + whether to also scan
       // companies pulled from their scraped job results
       leadCompanies: "",
@@ -34,6 +36,7 @@ export const usePrefs = create(
         jobLocation,
         jobExpMin,
         jobExpMax,
+        jobEmploymentTypes,
         leadCompanies,
         leadFromJobs,
       }) =>
@@ -43,6 +46,7 @@ export const usePrefs = create(
           jobLocation,
           jobExpMin,
           jobExpMax,
+          jobEmploymentTypes,
           leadCompanies,
           leadFromJobs,
           onboarded: true,

@@ -478,13 +478,19 @@ async function enrichCompany(name, keyword) {
     console.warn(`[companies] "${name}" enrich error: ${err.message}`);
   }
 
-  // hiring signal from our own scraped Jobs
+  // hiring signal from our own scraped Jobs — overall, and specifically for
+  // contract/freelance roles (employmentType is tagged from the same detail
+  // read the jobs scraper already does for experience).
   try {
-    const jobCount = await Job.countDocuments({
-      company: new RegExp(`^${escapeRegex(name.trim())}$`, "i"),
-    });
+    const companyFilter = { company: new RegExp(`^${escapeRegex(name.trim())}$`, "i") };
+    const [jobCount, contractJobCount] = await Promise.all([
+      Job.countDocuments(companyFilter),
+      Job.countDocuments({ ...companyFilter, employmentType: "contract" }),
+    ]);
     lead.jobCount = jobCount;
     lead.hiring = jobCount > 0;
+    lead.contractJobCount = contractJobCount;
+    lead.hiringContract = contractJobCount > 0;
   } catch { /* non-fatal */ }
 
   lead.emailCount = lead.emails.length;

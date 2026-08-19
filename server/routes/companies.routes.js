@@ -13,6 +13,7 @@ function buildQuery(q) {
   if (q.keyword) query.keyword = String(q.keyword).trim().toLowerCase();
   if (q.q) query.name = new RegExp(String(q.q).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
   if (q.hiring === "true") query.hiring = true;
+  if (q.hiringContract === "true") query.hiringContract = true;
   if (q.hasHrEmail === "true") query.hrEmailCount = { $gt: 0 };
   if (q.hasEmail === "true") query.emailCount = { $gt: 0 };
 
@@ -112,6 +113,8 @@ router.get("/export", async (req, res) => {
       Reviews: c.reviewCount ?? "",
       Hiring: c.hiring ? "Yes" : "No",
       "Open Jobs": c.jobCount || 0,
+      "Contract Roles": c.hiringContract ? "Yes" : "No",
+      "Contract Jobs": c.contractJobCount || 0,
       Status: c.status,
       "Scraped At": c.scrapedAt ? new Date(c.scrapedAt).toISOString().slice(0, 10) : "",
     }));
@@ -120,7 +123,8 @@ router.get("/export", async (req, res) => {
     ws["!cols"] = [
       { wch: 26 }, { wch: 30 }, { wch: 20 }, { wch: 36 }, { wch: 36 }, { wch: 30 },
       { wch: 11 }, { wch: 10 }, { wch: 9 }, { wch: 12 }, { wch: 16 }, { wch: 18 },
-      { wch: 8 }, { wch: 9 }, { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 12 },
+      { wch: 8 }, { wch: 9 }, { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 8 },
+      { wch: 10 }, { wch: 12 },
     ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Company Leads");

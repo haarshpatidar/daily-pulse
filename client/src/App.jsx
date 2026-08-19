@@ -6,6 +6,7 @@ import WeatherWidget from "./components/WeatherWidget.jsx";
 import NewsFeed from "./components/NewsFeed.jsx";
 import JobsFeed from "./components/JobsFeed.jsx";
 import CompaniesFeed from "./components/CompaniesFeed.jsx";
+import FreelanceFeed from "./components/FreelanceFeed.jsx";
 // Assisted apply disabled 2026-08-16 — see server/index.js for why.
 // import ApplyView from "./components/ApplyView.jsx";
 import PreferenceDrawer from "./components/PreferenceDrawer.jsx";
@@ -14,6 +15,7 @@ import { useUi } from "./store/useUi.js";
 import { useNews } from "./store/useNews.js";
 import { useJobs } from "./store/useJobs.js";
 import { useCompanies } from "./store/useCompanies.js";
+import { useFreelance } from "./store/useFreelance.js";
 // import { useApply } from "./store/useApply.js";
 import { useWeather } from "./store/useWeather.js";
 
@@ -34,12 +36,14 @@ export default function App() {
     useNews.getState().fetch();
     useJobs.getState().init();
     useCompanies.getState().init();
+    useFreelance.getState().init();
     // useApply.getState().init();
 
     const id = setInterval(() => {
       useNews.getState().fetch({ background: true });
       useJobs.getState().fetch({ background: true });
       useCompanies.getState().fetch({ background: true });
+      useFreelance.getState().fetch({ background: true });
     }, REFRESH_INTERVAL);
     return () => clearInterval(id);
   }, []);
@@ -67,6 +71,7 @@ export default function App() {
           )}
           {view === "news" && <NewsFeed />}
           {view === "jobs" && <JobsFeed />}
+          {view === "freelance" && <FreelanceFeed />}
           {view === "leads" && <CompaniesFeed />}
           {/* {view === "apply" && <ApplyView />} */}
         </main>

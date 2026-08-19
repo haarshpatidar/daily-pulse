@@ -43,6 +43,9 @@ const companySchema = new mongoose.Schema(
     // does this company currently appear in our scraped Jobs?
     hiring: { type: Boolean, default: false },
     jobCount: { type: Number, default: 0 },
+    // …and specifically for contract/freelance engagements, per Job.employmentType
+    hiringContract: { type: Boolean, default: false },
+    contractJobCount: { type: Number, default: 0 },
 
     // convenience counters so the API can filter/sort without touching the array
     emailCount: { type: Number, default: 0 },

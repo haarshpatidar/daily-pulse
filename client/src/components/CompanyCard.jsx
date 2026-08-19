@@ -60,11 +60,21 @@ export default function CompanyCard({ company, index }) {
             </a>
           )}
         </div>
-        {company.hiring && (
-          <span className="hiring-badge" title={`${company.jobCount} open listing(s)`}>
-            Hiring{company.jobCount ? ` · ${company.jobCount}` : ""}
-          </span>
-        )}
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          {company.hiring && (
+            <span className="hiring-badge" title={`${company.jobCount} open listing(s)`}>
+              Hiring{company.jobCount ? ` · ${company.jobCount}` : ""}
+            </span>
+          )}
+          {company.hiringContract && (
+            <span
+              className="hiring-badge"
+              title={`${company.contractJobCount} open contract/freelance listing(s)`}
+            >
+              Contract work{company.contractJobCount ? ` · ${company.contractJobCount}` : ""}
+            </span>
+          )}
+        </div>
       </div>
 
       {(employees || company.foundedYear || company.location || company.rating != null) && (

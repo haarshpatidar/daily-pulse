@@ -9,18 +9,32 @@ function experienceLabel(job) {
   return `${job.expMin}–${job.expMax} yrs`;
 }
 
+// LinkedIn's own label, title-cased for display ("contract" -> "Contract").
+function employmentTypeLabel(job) {
+  if (!job.employmentType) return "";
+  return job.employmentType.replace(/(^|-)([a-z])/g, (_, sep, c) => `${sep}${c.toUpperCase()}`);
+}
+
 // Assisted apply disabled 2026-08-16 — the "Queue apply" button and its
 // useApply/useUi wiring are commented out below. The plain "Apply" link stays:
 // it's just an external link to the listing, with no backend involved.
 export default function JobCard({ job, index }) {
   const experience = experienceLabel(job);
+  const engagement = employmentTypeLabel(job);
 
   return (
     <article
       className="card card-enter"
       style={{ "--stagger": Math.min(index, 12) }}
     >
-      <h3 className="text-[15px] font-medium">{job.title}</h3>
+      <div className="flex items-start justify-between gap-4">
+        <h3 className="text-[15px] font-medium">{job.title}</h3>
+        {engagement && (
+          <span className="hiring-badge" title="Engagement type, as stated by the posting">
+            {engagement}
+          </span>
+        )}
+      </div>
       <p className="text-[13px] text-muted mt-2">
         {job.company}
         {job.location ? ` · ${job.location}` : ""}

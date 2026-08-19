@@ -101,6 +101,15 @@ export const DownloadIcon = (props) => (
   </svg>
 );
 
+// A signed document — used for the Freelance / contract-work section.
+export const ContractIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M7 3h8l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+    <path d="M15 3v4h4" />
+    <path d="M8 13.5 10.5 16 16 10" />
+  </svg>
+);
+
 export const SendIcon = (props) => (
   <svg {...base} {...props}>
     <path d="M22 2 11 13" />

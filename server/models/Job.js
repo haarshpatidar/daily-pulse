@@ -19,6 +19,12 @@ const jobSchema = new mongoose.Schema(
     expMax: { type: Number, default: null },
     expText: { type: String, default: "" }, // the phrase we matched, for display
     seniority: { type: String, default: "" }, // LinkedIn's own label, informational
+
+    // Engagement type ("contract", "full-time", …), read from the same detail
+    // page as experience. "" means not yet enriched, never "not a contract" —
+    // see employmentTypeQuery in employmentType.js.
+    employmentType: { type: String, default: "" },
+
     expCheckedAt: { type: Date, default: null }, // set once the detail page was read
   },
   { timestamps: true }
