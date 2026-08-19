@@ -9,6 +9,7 @@ import newsRoutes from "./routes/news.routes.js";
 import jobsRoutes from "./routes/jobs.routes.js";
 import companiesRoutes from "./routes/companies.routes.js";
 import weatherRoutes from "./routes/weather.routes.js";
+import automationRoutes from "./routes/automation.routes.js";
 // --- Assisted apply: DISABLED 2026-08-16 ---
 // Left in the tree but unwired. It needs a headful Chrome, a persistent
 // userDataDir and disk writes, none of which work on a normal Node host.
@@ -40,6 +41,7 @@ app.use("/api/news", newsRoutes);
 app.use("/api/jobs", jobsRoutes);
 app.use("/api/companies", companiesRoutes);
 app.use("/api/weather", weatherRoutes);
+app.use("/api/automation", automationRoutes);
 // app.use("/api/apply", applyRoutes); // disabled — see note above
 
 // Serve auto-fill screenshots (apply review previews). Only the screenshots

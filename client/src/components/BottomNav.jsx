@@ -1,5 +1,5 @@
 import { useUi } from "../store/useUi.js";
-import { HomeIcon, NewsIcon, BriefcaseIcon, ContractIcon, MailIcon } from "./icons.jsx";
+import { HomeIcon, NewsIcon, BriefcaseIcon, ContractIcon, MailIcon, SendIcon } from "./icons.jsx";
 
 const TABS = [
   { id: "dashboard", label: "Home", Icon: HomeIcon },
@@ -7,6 +7,7 @@ const TABS = [
   { id: "jobs", label: "Jobs", Icon: BriefcaseIcon },
   { id: "freelance", label: "Freelance", Icon: ContractIcon },
   { id: "leads", label: "Leads", Icon: MailIcon },
+  { id: "automation", label: "Automation", Icon: SendIcon },
   // Assisted apply disabled 2026-08-16 — re-add with SendIcon to restore.
   // { id: "apply", label: "Apply", Icon: SendIcon },
 ];

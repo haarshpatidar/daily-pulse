@@ -110,6 +110,97 @@ export const ContractIcon = (props) => (
   </svg>
 );
 
+export const PlayIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M6 4.5v15l14-7.5-14-7.5z" />
+  </svg>
+);
+
+export const StopIcon = (props) => (
+  <svg {...base} {...props}>
+    <rect x="5" y="5" width="14" height="14" rx="1.5" />
+  </svg>
+);
+
+export const SpinnerIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M12 3a9 9 0 1 0 9 9" />
+  </svg>
+);
+
+export const RotateCcwIcon = (props) => (
+  <svg {...base} width={14} height={14} {...props}>
+    <path d="M3 12a9 9 0 1 0 2.6-6.36" />
+    <path d="M3 4v5h5" />
+  </svg>
+);
+
+export const TrashIcon = (props) => (
+  <svg {...base} width={14} height={14} {...props}>
+    <path d="M4 7h16" />
+    <path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13" />
+    <path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" />
+  </svg>
+);
+
+export const SearchIcon = (props) => (
+  <svg {...base} width={14} height={14} {...props}>
+    <circle cx="10.5" cy="10.5" r="6.5" />
+    <path d="M20 20l-4.35-4.35" />
+  </svg>
+);
+
+export const UploadIcon = (props) => (
+  <svg {...base} width={16} height={16} {...props}>
+    <path d="M12 21V9" />
+    <path d="m7 13 5-5 5 5" />
+    <path d="M5 21h14" />
+  </svg>
+);
+
+export const SheetIcon = (props) => (
+  <svg {...base} {...props}>
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    <path d="M3 9h18M3 14h18M9 4v16M15 4v16" />
+  </svg>
+);
+
+export const FileIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+    <path d="M14 3v4h4" />
+  </svg>
+);
+
+export const AlertIcon = (props) => (
+  <svg {...base} width={16} height={16} {...props}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 8v5" />
+    <path d="M12 16h.01" />
+  </svg>
+);
+
+export const ClockIcon = (props) => (
+  <svg {...base} width={16} height={16} {...props}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 3" />
+  </svg>
+);
+
+export const SkipIcon = (props) => (
+  <svg {...base} width={16} height={16} {...props}>
+    <path d="M5 5v14l9-7-9-7z" />
+    <path d="M18 5v14" />
+  </svg>
+);
+
+export const ShieldCheckIcon = (props) => (
+  <svg {...base} width={16} height={16} {...props}>
+    <path d="M12 3l8 3v6c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V6l8-3z" />
+    <path d="M9 12l2.2 2.2L15.5 10" />
+  </svg>
+);
+
 export const SendIcon = (props) => (
   <svg {...base} {...props}>
     <path d="M22 2 11 13" />

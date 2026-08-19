@@ -8,3 +8,6 @@ dist/
 # assisted-apply: uploaded resumes/screenshots and per-platform browser sessions
 server/uploads/
 server/.apply-sessions/
+
+# automation: SQLite recipient/tracking db
+server/data/

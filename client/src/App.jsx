@@ -7,6 +7,7 @@ import NewsFeed from "./components/NewsFeed.jsx";
 import JobsFeed from "./components/JobsFeed.jsx";
 import CompaniesFeed from "./components/CompaniesFeed.jsx";
 import FreelanceFeed from "./components/FreelanceFeed.jsx";
+import AutomationView from "./components/AutomationView.jsx";
 // Assisted apply disabled 2026-08-16 — see server/index.js for why.
 // import ApplyView from "./components/ApplyView.jsx";
 import PreferenceDrawer from "./components/PreferenceDrawer.jsx";
@@ -73,6 +74,7 @@ export default function App() {
           {view === "jobs" && <JobsFeed />}
           {view === "freelance" && <FreelanceFeed />}
           {view === "leads" && <CompaniesFeed />}
+          {view === "automation" && <AutomationView />}
           {/* {view === "apply" && <ApplyView />} */}
         </main>
       </div>
