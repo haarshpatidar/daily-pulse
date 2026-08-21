@@ -13,6 +13,10 @@ const companySearchSchema = new mongoose.Schema(
     // a label for this batch, stored on every Company it produces
     keyword: { type: String, default: "", lowercase: true, trim: true },
     lastScrapedAt: { type: Date, default: null },
+    // rotating offset into the full deduped company-name list, so a name
+    // pool bigger than one run's cap gets covered across successive runs
+    // instead of the same leading slice being enriched forever.
+    cursor: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

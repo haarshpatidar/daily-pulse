@@ -2,7 +2,6 @@
 // lib/mailer.ts, single transporter instead of one per user.
 import nodemailer from "nodemailer";
 import fs from "node:fs";
-import path from "node:path";
 import { getSmtpCreds } from "./smtp.js";
 
 let cached = null;
@@ -49,7 +48,7 @@ export async function sendMail({ to, subject, text, resumePath }) {
 
   const attachments = [];
   if (resumePath && fs.existsSync(resumePath)) {
-    attachments.push({ filename: path.basename(resumePath), path: resumePath });
+    attachments.push({ filename: "resume.pdf", path: resumePath });
   }
 
   const html = text

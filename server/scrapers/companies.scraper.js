@@ -9,19 +9,27 @@ const USER_AGENT =
 
 const REQUEST_TIMEOUT = 12000;
 const PER_COMPANY_DELAY_MS = 1500; // politeness gap between companies
-const MAX_PAGES_PER_SITE = 8; // homepage + a few contact/about/careers pages
-const MAX_FETCH_ATTEMPTS = 16; // cap requests per site (most extra paths 404 fast)
-const MAX_COMPANIES_PER_RUN = 120; // bound total runtime
+const MAX_PAGES_PER_SITE = 12; // homepage + a broader set of contact/about/careers/HR pages
+const MAX_FETCH_ATTEMPTS = 24; // cap requests per site (most extra paths 404 fast)
+const MAX_COMPANIES_PER_RUN = 200; // bound total runtime
 const MAX_HTML_BYTES = 3_000_000; // skip absurdly large pages
 
-// Common contact/about/careers paths probed directly — SPA homepages rarely
+// Common contact/about/careers/HR paths probed directly — SPA homepages rarely
 // link them in static HTML, but the pages themselves are usually server-rendered
 // and carry the published emails (e.g. /contact.html, /careers).
 const COMMON_PATHS = [
   "/contact", "/contact-us", "/contactus", "/contact.html", "/contact-us.html",
   "/about", "/about-us", "/about.html", "/company",
   "/careers", "/careers.html", "/jobs", "/team", "/people",
+  "/careers/contact", "/careers/contact-us", "/careers/openings",
+  "/contact-hr", "/hr", "/human-resources", "/recruitment",
+  "/join-us", "/work-with-us", "/current-openings", "/open-positions", "/vacancies",
 ];
+
+// Subdomains checked as extra sites (not just paths) — many companies run
+// their careers/jobs pages on a separate subdomain rather than under the
+// main site, and recruiter inboxes are more often published there.
+const SUBDOMAIN_PREFIXES = ["careers", "jobs"];
 
 // Domains that are never a company's *own* site — skip them when resolving the
 // official website (they're directories, socials or job boards).
@@ -37,8 +45,18 @@ const NON_OFFICIAL = [
 const CONTACT_HINTS = /contact|about|career|jobs|join|team|people|hr|recruit|work-with/i;
 
 // Local-part prefixes that mark an inbox as recruiting/people-facing.
-const HR_PREFIXES = /^(hr|career|careers|job|jobs|recruit|recruiting|recruiter|recruitment|talent|hiring|people|joinus|join|work|cv|resume|apply|hello-careers)/i;
+const HR_PREFIXES = /^(hr|career|careers|job|jobs|recruit|recruiting|recruiter|recruitment|talent|hiring|people|joinus|join|work|cv|resume|apply|hello-careers|staffing|onboarding|placement)/i;
 const GENERAL_PREFIXES = /^(info|contact|hello|hi|support|admin|office|mail|enquir|inquir|general|connect|reach|sales|hq|corporate)/i;
+
+// Same signal words, but matched as a whole token anywhere in the local part
+// (split on ., _, -) so region/team-prefixed inboxes like "india.hr@",
+// "apac-talent@" or "jane.recruiter@" are still caught as HR, not just
+// addresses that start with the keyword.
+const HR_TOKENS = new Set([
+  "hr", "career", "careers", "job", "jobs", "recruit", "recruiter", "recruiters",
+  "recruiting", "recruitment", "talent", "hiring", "people", "staffing",
+  "onboarding", "placement", "hrbp",
+]);
 
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 const CURRENT_YEAR = new Date().getFullYear();
@@ -206,28 +224,25 @@ async function crawlSite(website) {
   } catch {
     home = "";
   }
-  if (home) {
-    visited.add(website.replace(/\/$/, ""));
-    htmls.push({ url: website, html: home });
-  }
+  if (!home) return { htmls, origin }; // unreachable host (e.g. a careers subdomain that doesn't exist) — don't burn attempts probing dead paths
+  visited.add(website.replace(/\/$/, ""));
+  htmls.push({ url: website, html: home });
 
   // Contact/about/careers links discovered on the homepage…
   const discovered = [];
-  if (home) {
-    const $ = cheerio.load(home);
-    $("a[href]").each((_, el) => {
-      const href = $(el).attr("href") || "";
-      const text = $(el).text();
-      if (!CONTACT_HINTS.test(href) && !CONTACT_HINTS.test(text)) return;
-      let abs;
-      try {
-        abs = new URL(href, origin).href.split("#")[0].replace(/\/$/, "");
-      } catch {
-        return;
-      }
-      if (abs.startsWith(origin) && !discovered.includes(abs)) discovered.push(abs);
-    });
-  }
+  const $ = cheerio.load(home);
+  $("a[href]").each((_, el) => {
+    const href = $(el).attr("href") || "";
+    const text = $(el).text();
+    if (!CONTACT_HINTS.test(href) && !CONTACT_HINTS.test(text)) return;
+    let abs;
+    try {
+      abs = new URL(href, origin).href.split("#")[0].replace(/\/$/, "");
+    } catch {
+      return;
+    }
+    if (abs.startsWith(origin) && !discovered.includes(abs)) discovered.push(abs);
+  });
 
   // …plus well-known paths probed directly (SPA homepages don't link them).
   const guessed = COMMON_PATHS.map((p) => `${origin}${p}`);
@@ -248,12 +263,45 @@ async function crawlSite(website) {
     }
   }
 
+  // Second pass: some HR/contact links only surface on pages we just fetched
+  // (e.g. /careers → /careers/meet-the-team), not the homepage.
+  const secondPass = [];
+  for (const { html } of htmls.slice(1)) {
+    const $$ = cheerio.load(html);
+    $$("a[href]").each((_, el) => {
+      const href = $$(el).attr("href") || "";
+      const text = $$(el).text();
+      if (!CONTACT_HINTS.test(href) && !CONTACT_HINTS.test(text)) return;
+      let abs;
+      try {
+        abs = new URL(href, origin).href.split("#")[0].replace(/\/$/, "");
+      } catch {
+        return;
+      }
+      if (abs.startsWith(origin) && !secondPass.includes(abs)) secondPass.push(abs);
+    });
+  }
+  for (const url of secondPass) {
+    if (htmls.length >= MAX_PAGES_PER_SITE || attempts >= MAX_FETCH_ATTEMPTS) break;
+    const norm = url.replace(/\/$/, "");
+    if (visited.has(norm)) continue;
+    visited.add(norm);
+    attempts += 1;
+    try {
+      const html = await fetchHtml(url);
+      if (html) htmls.push({ url, html });
+    } catch {
+      /* unreachable — skip */
+    }
+  }
+
   return { htmls, origin };
 }
 
 function classifyEmail(address) {
   const local = address.split("@")[0];
   if (HR_PREFIXES.test(local)) return "hr";
+  if (local.split(/[._-]+/).some((t) => HR_TOKENS.has(t))) return "hr";
   if (GENERAL_PREFIXES.test(local)) return "general";
   return "other";
 }
@@ -400,7 +448,7 @@ function regexMeta(htmls) {
 // anything that echoes the company name (which catches product names like
 // "Zoho Recruit"). Often empty — that's preferable to noise.
 const HR_TITLE_STRICT =
-  /\b(HR (?:Manager|Executive|Lead|Head|Director|Business Partner|Generalist)|Human Resources?(?: Manager| Director| Lead| Head| Executive)?|Talent Acquisition(?: Manager| Specialist| Lead| Partner)?|Recruit(?:er|ment Manager|ment Lead|ment Specialist)|Head of (?:People|Talent|HR|Recruiting)|People Operations|VP(?: of)? People|Director of (?:People|HR|Talent)|Chief People Officer|CHRO)\b/i;
+  /\b(HR (?:Manager|Executive|Lead|Head|Director|Business Partner|Generalist)|Human Resources?(?: Manager| Director| Lead| Head| Executive)?|Talent Acquisition(?: Manager| Specialist| Lead| Partner)?|Talent (?:Sourcer|Partner|Advisor)|People Partner|HRBP|Recruit(?:er|ment Manager|ment Lead|ment Specialist|ment Partner)|Head of (?:People|Talent|HR|Recruiting)|People Operations|VP(?: of)? People|Director of (?:People|HR|Talent)|Chief People Officer|CHRO)\b/i;
 const NAME_STOPWORDS = new Set([
   "the", "our", "team", "inc", "ltd", "llc", "pvt", "company", "careers", "contact",
   "about", "people", "talent", "recruit", "human", "resources",
@@ -433,18 +481,46 @@ function extractHrContacts(htmls, companyName) {
   return contacts.slice(0, 10);
 }
 
-// Enrich one company name into a full lead document and upsert it.
+// Union by email address — a run that finds fewer addresses than before (site
+// flaky, page timed out, temporary block) must never erase ones already found.
+// The fresh copy wins for type/source since classification only improves.
+function mergeEmails(existing, found) {
+  const byAddress = new Map((existing || []).map((e) => [e.address, e]));
+  for (const e of found) byAddress.set(e.address, e);
+  return [...byAddress.values()];
+}
+
+// Same union logic for named HR contacts, keyed by lowercased name.
+function mergeContacts(existing, found) {
+  const byName = new Map((existing || []).map((c) => [c.name.toLowerCase(), c]));
+  for (const c of found) byName.set(c.name.toLowerCase(), c);
+  return [...byName.values()].slice(0, 25); // cumulative cap, not per-run
+}
+
+// Enrich one company name into a full lead document and upsert it. Merges
+// onto whatever's already stored so leads only ever grow — a run that turns
+// up nothing new (or less) leaves prior emails/contacts/firmographics intact.
 async function enrichCompany(name, keyword) {
   const nameKey = nameKeyOf(name);
+  const existing = await Company.findOne({ nameKey }).lean();
   const lead = {
     name: name.trim(),
     nameKey,
     keyword,
-    status: "failed",
+    status: existing?.status || "failed",
     scrapedAt: new Date(),
-    emails: [],
-    hrContacts: [],
-    hrNames: [],
+    emails: existing?.emails || [],
+    hrContacts: existing?.hrContacts || [],
+    hrNames: existing?.hrNames || [],
+    website: existing?.website || "",
+    domain: existing?.domain || "",
+    foundedYear: existing?.foundedYear ?? null,
+    employeeCount: existing?.employeeCount ?? null,
+    employeeRange: existing?.employeeRange || "",
+    location: existing?.location || "",
+    rating: existing?.rating ?? null,
+    reviewCount: existing?.reviewCount ?? null,
+    description: existing?.description || "",
   };
 
   try {
@@ -453,24 +529,41 @@ async function enrichCompany(name, keyword) {
       lead.website = website;
       try {
         lead.domain = new URL(website).hostname.replace(/^www\./, "");
-      } catch { /* leave blank */ }
+      } catch { /* keep previously-known domain, if any */ }
 
-      const { htmls } = await crawlSite(website);
+      const { htmls: siteHtmls } = await crawlSite(website);
+
+      // Careers/jobs subdomains often carry the recruiter-facing pages (and
+      // inboxes) that the main site never links to — crawl them separately.
+      const subHtmls = [];
+      if (lead.domain) {
+        for (const sub of SUBDOMAIN_PREFIXES) {
+          const subHost = `${sub}.${lead.domain}`;
+          if (subHost === new URL(website).hostname.replace(/^www\./, "")) continue;
+          try {
+            const { htmls: h } = await crawlSite(`https://${subHost}`);
+            subHtmls.push(...h);
+          } catch { /* subdomain doesn't exist — fine */ }
+          await sleep(500);
+        }
+      }
+
+      const htmls = [...siteHtmls, ...subHtmls];
       if (htmls.length) {
-        const emails = extractEmails(htmls);
+        const foundEmails = extractEmails(htmls);
         const meta = { ...regexMeta(htmls), ...readJsonLd(htmls) }; // JSON-LD wins
-        const hrContacts = extractHrContacts(htmls, name);
+        const foundContacts = extractHrContacts(htmls, name);
 
-        lead.emails = emails;
-        lead.hrContacts = hrContacts;
-        lead.hrNames = hrContacts.map((c) => c.name);
-        lead.foundedYear = meta.foundedYear ?? null;
-        lead.employeeCount = meta.employeeCount ?? null;
-        lead.employeeRange = meta.employeeRange || "";
-        lead.location = meta.location || "";
-        lead.rating = meta.rating ?? null;
-        lead.reviewCount = meta.reviewCount ?? null;
-        lead.description = meta.description || "";
+        lead.emails = mergeEmails(lead.emails, foundEmails);
+        lead.hrContacts = mergeContacts(lead.hrContacts, foundContacts);
+        lead.hrNames = lead.hrContacts.map((c) => c.name);
+        lead.foundedYear = meta.foundedYear ?? lead.foundedYear;
+        lead.employeeCount = meta.employeeCount ?? lead.employeeCount;
+        lead.employeeRange = meta.employeeRange || lead.employeeRange;
+        lead.location = meta.location || lead.location;
+        lead.rating = meta.rating ?? lead.rating;
+        lead.reviewCount = meta.reviewCount ?? lead.reviewCount;
+        lead.description = meta.description || lead.description;
         lead.status = "enriched";
       }
     }
@@ -500,8 +593,11 @@ async function enrichCompany(name, keyword) {
   return lead;
 }
 
-// Build the de-duplicated list of company names to enrich for a search:
+// Build the de-duplicated list of every company name to enrich for a search:
 // explicit names + (optionally) every distinct company we've scraped jobs for.
+// Unbounded — the per-run cap is applied by the caller via a rotating window,
+// not by truncating this list, so a pool bigger than one run's cap still gets
+// covered in full across successive runs.
 async function collectCompanyNames(search) {
   const names = new Map(); // nameKey -> display name
   for (const n of search.companies || []) {
@@ -515,15 +611,28 @@ async function collectCompanyNames(search) {
       if (t && t.toLowerCase() !== "unknown") names.set(nameKeyOf(t), t);
     }
   }
-  return [...names.values()].slice(0, MAX_COMPANIES_PER_RUN);
+  return [...names.values()];
+}
+
+// Pick this run's slice starting at `cursor`, wrapping around the end of the
+// list back to the start rather than always starting over from index 0.
+function windowFrom(names, cursor, size) {
+  if (names.length <= size) return names;
+  const start = cursor % names.length;
+  const end = start + size;
+  if (end <= names.length) return names.slice(start, end);
+  return [...names.slice(start), ...names.slice(0, end - names.length)];
 }
 
 async function runSearch(search) {
-  const names = await collectCompanyNames(search);
-  if (names.length === 0) {
+  const allNames = await collectCompanyNames(search);
+  if (allNames.length === 0) {
     console.log("[companies] no company names to enrich (add names or scrape jobs first)");
     return { companies: 0, enriched: 0, emails: 0 };
   }
+
+  const cursor = search.cursor || 0;
+  const names = windowFrom(allNames, cursor, MAX_COMPANIES_PER_RUN);
 
   let enriched = 0;
   let emails = 0;
@@ -538,9 +647,13 @@ async function runSearch(search) {
     if (i < names.length - 1) await sleep(PER_COMPANY_DELAY_MS);
   }
 
-  await CompanySearch.updateOne({ _id: search._id }, { $set: { lastScrapedAt: new Date() } });
+  const nextCursor = (cursor + names.length) % allNames.length;
+  await CompanySearch.updateOne(
+    { _id: search._id },
+    { $set: { lastScrapedAt: new Date(), cursor: nextCursor } }
+  );
   console.log(
-    `[companies] "${search.keyword || "leads"}" — ${names.length} companies, ${enriched} enriched, ${emails} emails`
+    `[companies] "${search.keyword || "leads"}" — ${names.length}/${allNames.length} companies this run, ${enriched} enriched, ${emails} emails`
   );
   return { companies: names.length, enriched, emails };
 }
